@@ -2,20 +2,15 @@ package main
 
 import (
 	"context"
-	"log"
-
-	"fmt"
-
-	"encoding/json"
 
 	"github.com/google/go-github/github"
 	"golang.org/x/oauth2"
 )
 
-var Configuration = Config{}
+var PRMirrorer = PRMirror{}
 
 func main() {
-	Configuration = Configuration.Init()
+	Configuration := Config{}.Init()
 
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(
@@ -24,31 +19,12 @@ func main() {
 	tc := oauth2.NewClient(ctx, ts)
 
 	client := github.NewClient(tc)
-	events, _, err := client.Activity.ListRepositoryEvents(ctx, Configuration.UpstreamOwner, Configuration.UpstreamRepo, nil)
-	if _, ok := err.(*github.RateLimitError); ok {
-		log.Println("hit rate limit")
+
+	PRMirrorer = PRMirror{
+		GitHubClient:  client,
+		Context:       &ctx,
+		Configuration: &Configuration,
 	}
 
-	for _, event := range events {
-
-		if *event.Type == "PullRequestEvent" {
-			prEvent := github.PullRequestEvent{}
-
-			err = json.Unmarshal(event.GetRawPayload(), &prEvent)
-			if err != nil {
-				panic(err)
-			}
-
-			prAction := prEvent.GetAction()
-
-			fmt.Printf("%s\n", prEvent.PullRequest.GetURL())
-
-			if prAction == "opened" {
-				//TODO: Check if we already have an open PR for this and add a comment saying upstream reopened it and remove the upsteam closed tag
-				MirrorPR(&prEvent)
-			} else if prAction == "closed" {
-				//AddLabel("Upstream Closed")
-			}
-		}
-	}
+	PRMirrorer.Run()
 }
