@@ -37,7 +37,14 @@ func main() {
 			if err != nil {
 				panic(err)
 			}
+
 			fmt.Printf("%s\n", *prEvent.PullRequest.URL)
+
+			if *prEvent.Action == "opened" {
+				MirrorPR(&prEvent) //TODO: Check if we already have an open PR for this and add a comment saying upstream reopened it
+			} else if *prEvent.Action == "closed" {
+				//AddLabel("Upstream Closed")
+			}
 		}
 	}
 }
