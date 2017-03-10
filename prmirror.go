@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"log"
 
 	"github.com/google/go-github/github"
 )
@@ -23,7 +21,8 @@ type PRMirror struct {
 func (p PRMirror) Run() {
 	events, _, err := p.GitHubClient.Activity.ListRepositoryEvents(*p.Context, p.Configuration.UpstreamOwner, p.Configuration.UpstreamRepo, nil)
 	if _, ok := err.(*github.RateLimitError); ok {
-		log.Println("hit rate limit")
+		// TODO: Maybe add some context here
+		log.Error("The github.com rate limit has been hit")
 	}
 
 	for _, event := range events {
@@ -38,7 +37,7 @@ func (p PRMirror) Run() {
 
 			prAction := prEvent.GetAction()
 
-			fmt.Printf("%s\n", prEvent.PullRequest.GetURL())
+			log.Debugf("%s\n", prEvent.PullRequest.GetURL())
 
 			if prAction == "opened" {
 				//TODO: Check if we already have an open PR for this and add a comment saying upstream reopened it and remove the upsteam closed tag
@@ -51,7 +50,7 @@ func (p PRMirror) Run() {
 }
 
 func (p PRMirror) MirrorPR(PREvent *github.PullRequestEvent) {
-	fmt.Printf("Mirroring new PR: %s\n", PREvent.PullRequest.GetTitle())
+	log.Debugf("Mirroring new PR: %s\n", PREvent.PullRequest.GetTitle())
 }
 
 func (p PRMirror) AddLabel(id int, tag string) {
