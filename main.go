@@ -33,16 +33,20 @@ func main() {
 
 		if *event.Type == "PullRequestEvent" {
 			prEvent := github.PullRequestEvent{}
+
 			err = json.Unmarshal(event.GetRawPayload(), &prEvent)
 			if err != nil {
 				panic(err)
 			}
 
-			fmt.Printf("%s\n", *prEvent.PullRequest.URL)
+			prAction := prEvent.GetAction()
 
-			if *prEvent.Action == "opened" {
-				MirrorPR(&prEvent) //TODO: Check if we already have an open PR for this and add a comment saying upstream reopened it
-			} else if *prEvent.Action == "closed" {
+			fmt.Printf("%s\n", prEvent.PullRequest.GetURL())
+
+			if prAction == "opened" {
+				//TODO: Check if we already have an open PR for this and add a comment saying upstream reopened it and remove the upsteam closed tag
+				MirrorPR(&prEvent)
+			} else if prAction == "closed" {
 				//AddLabel("Upstream Closed")
 			}
 		}
