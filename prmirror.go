@@ -26,43 +26,20 @@ type PRMirror struct {
 }
 
 func (p PRMirror) HandlePREvent(prEvent *github.PullRequestEvent) {
-	downstreamPR, err := p.Database.GetDownstreamID(prEvent.PullRequest.GetNumber())
-	if err != nil {
-		panic(err)
-	}
 
 	prAction := prEvent.GetAction()
 
 	log.Debugf("%s\n", prEvent.PullRequest.GetURL())
 
-	if prAction == "opened" {
-		// We already have a PR for this
-		if downstreamPR != 0 {
-			p.AddComment(downstreamPR, fmt.Sprintf("Upstream has reopened this PR"))
-			p.RemoveLabel(downstreamPR, "Upstream PR Closed")
-			p.AddLabels(downstreamPR, []string{"Upstream PR Open"})
-		} else {
+	if prAction == "closed" {
+		if prEvent.PullRequest.GetMerged() == true {
 			prID, err := p.MirrorPR(prEvent.PullRequest)
 			if err != nil {
 				log.Errorf("Error while creating a new PR: %s\n", err.Error())
 			} else {
-				p.AddLabels(prID, []string{"Upstream PR Open"})
+				p.AddLabels(prID, []string{"Upstream PR Merged"})
 				p.Database.StoreMirror(prID, prEvent.PullRequest.GetNumber())
 			}
-		}
-	} else if prAction == "closed" {
-		if downstreamPR != 0 {
-			if prEvent.PullRequest.GetMerged() == true {
-				p.AddComment(downstreamPR, fmt.Sprintf("This PR has been merged upstream by %s", prEvent.PullRequest.MergedBy.GetName()))
-				p.RemoveLabel(downstreamPR, "Upstream PR Open")
-				p.AddLabels(downstreamPR, []string{"Upstream PR Merged"})
-			} else {
-				p.AddComment(downstreamPR, fmt.Sprintf("This PR has been closed upstream by %s", prEvent.Sender.GetName()))
-				p.RemoveLabel(downstreamPR, "Upstream PR Open")
-				p.AddLabels(downstreamPR, []string{"Upstream PR Closed"})
-			}
-		} else {
-			//panic("Upstream closed  a PR we don't have, we are missing a pull request, something has gone wrong!")
 		}
 	}
 }
