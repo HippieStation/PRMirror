@@ -4,12 +4,20 @@ import (
 	"context"
 	"os"
 
+	"flag"
+
 	"github.com/google/go-github/github"
 	"github.com/op/go-logging"
 	"golang.org/x/oauth2"
 )
 
 var PRMirrorer = PRMirror{}
+var InitialImport = false
+
+func init() {
+	flag.BoolVar(&InitialImport, "InitialImport", false, "Import all current PRs from Upstream")
+	flag.Parse()
+}
 
 func main() {
 	backend := logging.NewLogBackend(os.Stderr, "", 0)
@@ -32,5 +40,9 @@ func main() {
 		Configuration: &Configuration,
 	}
 
-	PRMirrorer.Run()
+	if InitialImport {
+		PRMirrorer.InitialImport()
+	} else {
+		PRMirrorer.Run()
+	}
 }

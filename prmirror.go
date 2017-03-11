@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 
+	"fmt"
+
 	"github.com/google/go-github/github"
 )
 
@@ -32,11 +34,55 @@ func (p PRMirror) HandlePREvent(prEvent *github.PullRequestEvent) {
 	}
 }
 
-func (p PRMirror) Run() {
-	events, _, err := p.GitHubClient.Activity.ListRepositoryEvents(*p.Context, p.Configuration.UpstreamOwner, p.Configuration.UpstreamRepo, nil)
+func (p PRMirror) isRatelimit(err error) bool {
 	if _, ok := err.(*github.RateLimitError); ok {
 		// TODO: Maybe add some context here
 		log.Error("The github.com rate limit has been hit")
+		return true
+	}
+	return false
+}
+
+func (p PRMirror) GetOpenPRs() ([]*github.PullRequest, error) {
+	var allPrs []*github.PullRequest
+
+	opt := &github.PullRequestListOptions{
+		ListOptions: github.ListOptions{PerPage: 100},
+	}
+
+	for {
+		log.Debugf("Getting OpenPRs Page %d\n", opt.ListOptions.Page)
+
+		prs, resp, err := p.GitHubClient.PullRequests.List(*p.Context, p.Configuration.UpstreamOwner, p.Configuration.UpstreamRepo, opt)
+		if p.isRatelimit(err) {
+			return nil, err
+		}
+
+		allPrs = append(allPrs, prs...)
+		if resp.NextPage == 0 {
+			break
+		}
+		opt.ListOptions.Page = resp.NextPage
+	}
+
+	return allPrs, nil
+}
+
+func (p PRMirror) InitialImport() {
+	prs, err := p.GetOpenPRs()
+	if p.isRatelimit(err) {
+		return
+	}
+
+	for _, pr := range prs {
+		fmt.Printf("[%d] - %s\n", pr.GetID(), pr.GetTitle())
+	}
+}
+
+func (p PRMirror) Run() {
+	events, _, err := p.GitHubClient.Activity.ListRepositoryEvents(*p.Context, p.Configuration.UpstreamOwner, p.Configuration.UpstreamRepo, nil)
+	if p.isRatelimit(err) {
+		return
 	}
 
 	for _, event := range events {
