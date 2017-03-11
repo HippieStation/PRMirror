@@ -1,5 +1,7 @@
 package main
 
+// TODO: Make this less bad, all of it
+
 import (
 	"github.com/boltdb/bolt"
 )
@@ -25,14 +27,43 @@ func (d *Database) Close() {
 	d.db.Close()
 }
 
-func (d *Database) StoreMirror(downstreamID int, upstreamID int) bool {
-	return false
+func (d *Database) StoreMirror(downstreamID int, upstreamID int) error {
+
+	// Store the upstream->downstream id
+	d.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("up2down"))
+		err := b.Put([]byte(upstreamID), []byte(downstreamID))
+		return err
+	})
+
+	// Store the upstream->downstream id
+	d.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("down2up"))
+		err := b.Put([]byte(downstreamID), []byte(upstreamID))
+		return err
+	})
+
+	return nil
 }
 
-func (d *Database) GetDownstreamID(upstreamID int) int {
-	return 0
+func (d *Database) GetDownstreamID(upstreamID int) []byte {
+	var retval = []byte{0}
+	d.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("up2down"))
+		v := b.Get([]byte(upstreamID))
+		copy(retval, v)
+		return nil
+	})
+	return retval
 }
 
-func (d *Database) GetUpstreamID(downstreamID int) int {
-	return 0
+func (d *Database) GetUpstreamID(downstreamID int) []byte {
+	var retval = []byte{0}
+	d.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("down2up"))
+		v := b.Get([]byte(downstreamID))
+		copy(retval, v)
+		return nil
+	})
+	return retval
 }
