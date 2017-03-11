@@ -140,11 +140,11 @@ func (d *Database) GetID(bucket string, id int) (int, error) {
 	defer tx.Rollback()
 
 	if v := tx.Bucket([]byte(bucket)).Get(d.itob(id)); v == nil {
-		log.Debugf("Getting %d from %s = nil\n", id, bucket)
+		//log.Debugf("Getting %d from %s = nil\n", id, bucket)
 		return 0, nil
 	} else {
 		val := d.btoi(v)
-		log.Debugf("Getting %d from %s = %d\n", id, bucket, val)
+		//log.Debugf("Getting %d from %s = %d\n", id, bucket, val)
 		return val, nil
 	}
 }
