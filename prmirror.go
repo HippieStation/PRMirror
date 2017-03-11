@@ -74,7 +74,7 @@ func (p PRMirror) InitialImport() {
 	}
 
 	for _, pr := range prs {
-		log.Printf("[%d] - %s\n", pr.GetID(), pr.GetTitle())
+		log.Infof("[%d] - %s\n", pr.GetNumber(), pr.GetTitle())
 	}
 }
 
@@ -101,10 +101,19 @@ func (p PRMirror) Run() {
 
 func (p PRMirror) MirrorPR(PREvent *github.PullRequestEvent) {
 	log.Infof("Mirroring PR [%d]: %s from ", PREvent.PullRequest.GetNumber(), PREvent.PullRequest.GetTitle(), PREvent.PullRequest.User.GetLogin())
+
+	base := "master"
+	newPR := github.NewPullRequest{}
+	newPR.Title = PREvent.PullRequest.Title
+	newPR.Body = PREvent.PullRequest.Body
+	newPR.Base = &base
+	newPR.Head = PREvent.PullRequest.Head.Label
+
+	p.GitHubClient.PullRequests.Create(*p.Context, p.Configuration.DownstreamOwner, p.Configuration.DownstreamOwner, &newPR)
 }
 
 func (p PRMirror) AddLabels(id int, tags []string) bool {
-	_, _, err := p.GitHubClient.Issues.AddLabelsToIssue(*p.Context, p.Configuration.UpstreamOwner, p.Configuration.UpstreamRepo, id, tags)
+	_, _, err := p.GitHubClient.Issues.AddLabelsToIssue(*p.Context, p.Configuration.DownstreamOwner, p.Configuration.DownstreamOwner, id, tags)
 	if err != nil {
 		log.Errorf("Error while adding a label to issue#:%d - %s", id, err.Error())
 		return false
