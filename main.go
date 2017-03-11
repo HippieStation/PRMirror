@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/google/go-github/github"
-	logging "github.com/op/go-logging"
+	"github.com/op/go-logging"
 	"golang.org/x/oauth2"
 )
 

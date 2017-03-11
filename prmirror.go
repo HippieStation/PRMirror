@@ -43,6 +43,7 @@ func (p PRMirror) Run() {
 				//TODO: Check if we already have an open PR for this and add a comment saying upstream reopened it and remove the upsteam closed tag
 				p.MirrorPR(&prEvent)
 			} else if prAction == "closed" {
+
 				//AddLabel("Upstream Closed")
 			}
 		}
@@ -53,6 +54,12 @@ func (p PRMirror) MirrorPR(PREvent *github.PullRequestEvent) {
 	log.Debugf("Mirroring new PR: %s\n", PREvent.PullRequest.GetTitle())
 }
 
-func (p PRMirror) AddLabel(id int, tag string) {
-	//client.Issues.AddLabelsToIssue
+func (p PRMirror) AddLabels(id int, tags []string) bool {
+	_, _, err := p.GitHubClient.Issues.AddLabelsToIssue(*p.Context, p.Configuration.UpstreamOwner, p.Configuration.UpstreamRepo, id, tags)
+	if err != nil {
+		log.Errorf("Error while adding a label to issue#:%d - %s", id, err.Error())
+		return false
+	}
+
+	return true
 }
