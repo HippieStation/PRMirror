@@ -8,6 +8,8 @@ import (
 
 	"fmt"
 
+	"strconv"
+
 	"github.com/google/go-github/github"
 )
 
@@ -37,20 +39,30 @@ func (p PRMirror) HandlePREvent(prEvent *github.PullRequestEvent) {
 		// We already have a PR for this
 		if downstreamPR != 0 {
 			p.AddComment(downstreamPR, fmt.Sprintf("Upstream has reopened this PR"))
-			p.RemoveLabel(downstreamPR, "Upstream Closed")
+			p.RemoveLabel(downstreamPR, "Upstream PR Closed")
+			p.AddLabels(downstreamPR, []string{"Upstream PR Open"})
 		} else {
-			p.MirrorPR(prEvent.PullRequest)
+			prID, err := p.MirrorPR(prEvent.PullRequest)
+			if err != nil {
+				log.Errorf("Error while creating a new PR: %s\n", err.Error())
+			} else {
+				p.AddLabels(prID, []string{"Upstream PR Open"})
+				p.Database.StoreMirror(prID, prEvent.PullRequest.GetNumber())
+			}
 		}
 	} else if prAction == "closed" {
 		if downstreamPR != 0 {
 			if prEvent.PullRequest.GetMerged() == true {
 				p.AddComment(downstreamPR, fmt.Sprintf("This PR has been merged upstream by %s", prEvent.PullRequest.MergedBy.GetName()))
-				p.AddLabels(downstreamPR, []string{"Upstream Merged"})
+				p.RemoveLabel(downstreamPR, "Upstream PR Open")
+				p.AddLabels(downstreamPR, []string{"Upstream PR Merged"})
 			} else {
-				p.AddLabels(downstreamPR, []string{"Upstream Closed"})
+				p.AddComment(downstreamPR, fmt.Sprintf("This PR has been closed upstream by %s", prEvent.Sender.GetName()))
+				p.RemoveLabel(downstreamPR, "Upstream PR Open")
+				p.AddLabels(downstreamPR, []string{"Upstream PR Closed"})
 			}
 		} else {
-			panic("Upstream closed a PR we don't have, we are missing a pull request, something has gone wrong!")
+			//panic("Upstream closed  a PR we don't have, we are missing a pull request, something has gone wrong!")
 		}
 	}
 }
@@ -62,6 +74,43 @@ func (p PRMirror) isRatelimit(err error) bool {
 		return true
 	}
 	return false
+}
+
+func (p PRMirror) GetRepoEvents() ([]*github.Event, int64, error) {
+	var allEvents []*github.Event
+	var pollInterval = int64(0)
+
+	opt := &github.ListOptions{
+		PerPage: 100,
+	}
+
+	for {
+		log.Debugf("Getting RepoEvents Page %d\n", opt.Page)
+
+		events, resp, err := p.GitHubClient.Activity.ListRepositoryEvents(*p.Context, p.Configuration.UpstreamOwner, p.Configuration.UpstreamRepo, opt)
+		if err != nil {
+			log.Errorf("Error while listing repository events. %s", err.Error())
+
+			pollInterval, err = strconv.ParseInt(resp.Response.Header.Get("X-Poll-Interval"), 10, 64)
+			if err != nil {
+				panic(err)
+			}
+
+			return nil, pollInterval, err
+		}
+
+		allEvents = append(allEvents, events...)
+		if resp.NextPage == 0 {
+			pollInterval, err = strconv.ParseInt(resp.Response.Header.Get("X-Poll-Interval"), 10, 64)
+			if err != nil {
+				panic(err)
+			}
+			break
+		}
+		opt.Page = resp.NextPage
+	}
+
+	return allEvents, pollInterval, nil
 }
 
 func (p PRMirror) GetOpenPRs() ([]*github.PullRequest, error) {
@@ -107,44 +156,52 @@ func (p PRMirror) InitialImport() {
 			log.Infof("NEW: [%d] - %s\n", pr.GetNumber(), pr.GetTitle())
 			prID, err := p.MirrorPR(pr)
 			if err != nil {
-				panic(err)
+				log.Errorf("Error while creating a new PR: %s\n", err.Error())
+			} else {
+				p.Database.StoreMirror(prID, pr.GetNumber())
+				p.AddLabels(prID, []string{"Upstream PR Open"})
 			}
-			p.Database.StoreMirror(prID, pr.GetNumber())
-			p.AddLabels(prID, []string{"Upstream PR"})
-
 			time.Sleep(2 * time.Second)
 		}
 	}
 }
 
 func (p PRMirror) Run() {
-	events, _, err := p.GitHubClient.Activity.ListRepositoryEvents(*p.Context, p.Configuration.UpstreamOwner, p.Configuration.UpstreamRepo, nil)
-	if p.isRatelimit(err) {
-		return
-	}
+	for {
+		events, pollInterval, err := p.GetRepoEvents()
+		if err == nil {
+			for _, event := range events {
+				seenEvent, _ := p.Database.SeenEvent(event.GetID())
 
-	for _, event := range events {
-		eventType := event.GetType()
+				if !seenEvent {
+					eventType := event.GetType()
 
-		if eventType == "PullRequestEvent" {
-			prEvent := github.PullRequestEvent{}
-			err = json.Unmarshal(event.GetRawPayload(), &prEvent)
-			if err != nil {
-				panic(err)
+					if eventType == "PullRequestEvent" {
+						prEvent := github.PullRequestEvent{}
+						err = json.Unmarshal(event.GetRawPayload(), &prEvent)
+						if err != nil {
+							panic(err)
+						}
+
+						p.HandlePREvent(&prEvent)
+						p.Database.AddEvent(event.GetID())
+					}
+				}
 			}
-
-			p.HandlePREvent(&prEvent)
 		}
+
+		log.Debugf("Sleeping for %d as specified by GitHub\n", pollInterval)
+		time.Sleep(time.Duration(pollInterval) * time.Second)
 	}
 }
 
 func (p PRMirror) MirrorPR(pr *github.PullRequest) (int, error) {
-	log.Infof("Mirroring PR [%d]: %s from ", pr.GetNumber(), pr.GetTitle(), pr.User.GetLogin())
+	log.Infof("Mirroring PR [%d]: %s from %s\n", pr.GetNumber(), pr.GetTitle(), pr.User.GetLogin())
 
 	base := "master"
 	maintainerCanModify := false
 	title := fmt.Sprintf("[MIRROR] %s", pr.GetTitle())
-	body := fmt.Sprintf("Original PR: %s\n--------------------\n%s", pr.GetURL(), pr.GetBody())
+	body := fmt.Sprintf("Original PR: %s\n--------------------\n%s", pr.GetHTMLURL(), pr.GetBody())
 
 	newPR := github.NewPullRequest{}
 	newPR.Title = &title
@@ -161,8 +218,23 @@ func (p PRMirror) MirrorPR(pr *github.PullRequest) (int, error) {
 	return pr.GetNumber(), nil
 }
 
-func (p PRMirror) AddLabels(id int, tags []string) bool {
-	_, _, err := p.GitHubClient.Issues.AddLabelsToIssue(*p.Context, p.Configuration.DownstreamOwner, p.Configuration.DownstreamOwner, id, tags)
+func (p PRMirror) CreateLabel(labelText string, labelColour string) bool {
+	label := github.Label{
+		Name:  &labelText,
+		Color: &labelColour,
+	}
+
+	_, _, err := p.GitHubClient.Issues.CreateLabel(*p.Context, p.Configuration.DownstreamOwner, p.Configuration.DownstreamRepo, &label)
+	if err != nil {
+		log.Errorf("Error while creating a label - %s", err.Error())
+		return false
+	}
+
+	return true
+}
+
+func (p PRMirror) AddLabels(id int, labels []string) bool {
+	_, _, err := p.GitHubClient.Issues.AddLabelsToIssue(*p.Context, p.Configuration.DownstreamOwner, p.Configuration.DownstreamRepo, id, labels)
 	if err != nil {
 		log.Errorf("Error while adding a label on issue#:%d - %s", id, err.Error())
 		return false
@@ -171,8 +243,8 @@ func (p PRMirror) AddLabels(id int, tags []string) bool {
 	return true
 }
 
-func (p PRMirror) RemoveLabel(id int, tags string) bool {
-	_, err := p.GitHubClient.Issues.RemoveLabelForIssue(*p.Context, p.Configuration.DownstreamOwner, p.Configuration.DownstreamOwner, id, tags)
+func (p PRMirror) RemoveLabel(id int, labels string) bool {
+	_, err := p.GitHubClient.Issues.RemoveLabelForIssue(*p.Context, p.Configuration.DownstreamOwner, p.Configuration.DownstreamRepo, id, labels)
 	if err != nil {
 		log.Errorf("Error while removing a label on issue#:%d - %s", id, err.Error())
 		return false
@@ -185,7 +257,7 @@ func (p PRMirror) AddComment(id int, comment string) bool {
 	issueComment := github.IssueComment{}
 	issueComment.Body = &comment
 
-	_, _, err := p.GitHubClient.Issues.CreateComment(*p.Context, p.Configuration.DownstreamOwner, p.Configuration.DownstreamOwner, id, &issueComment)
+	_, _, err := p.GitHubClient.Issues.CreateComment(*p.Context, p.Configuration.DownstreamOwner, p.Configuration.DownstreamRepo, id, &issueComment)
 	if err != nil {
 		log.Errorf("Error while adding a comment to issue#:%d - %s", id, err.Error())
 		return false

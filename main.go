@@ -38,6 +38,7 @@ func main() {
 	tc := oauth2.NewClient(ctx, ts)
 
 	client := github.NewClient(tc)
+	client.UserAgent = "HippieStation/PRMirror"
 
 	PRMirrorer = PRMirror{
 		GitHubClient:  client,
@@ -47,6 +48,10 @@ func main() {
 	}
 
 	if InitialImport {
+		PRMirrorer.CreateLabel("Upstream PR Open", "28a745")
+		PRMirrorer.CreateLabel("Upstream PR Closed", "cb2431")
+		PRMirrorer.CreateLabel("Upstream PR Merged", "6f42c1")
+
 		PRMirrorer.InitialImport()
 	} else if DumpDB {
 		PRMirrorer.Database.DumpDB()

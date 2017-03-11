@@ -4,6 +4,7 @@ package main
 
 import (
 	"encoding/binary"
+	"strconv"
 
 	"fmt"
 
@@ -19,6 +20,14 @@ func NewDatabase() *Database {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	db.Update(func(tx *bolt.Tx) error {
+		_, err := tx.CreateBucketIfNotExists([]byte("events"))
+		if err != nil {
+			return fmt.Errorf("create bucket: %s", err)
+		}
+		return nil
+	})
 
 	db.Update(func(tx *bolt.Tx) error {
 		_, err := tx.CreateBucketIfNotExists([]byte("up2down"))
@@ -83,6 +92,24 @@ func (d *Database) btoi(v []byte) int {
 	return int(binary.BigEndian.Uint64(v))
 }
 
+func (d *Database) AddEvent(eventIDStr string) error {
+	eventID, err := strconv.ParseInt(eventIDStr, 10, 64)
+	if err != nil {
+		panic(err)
+	}
+
+	eventIDBytes := d.itob(int(eventID))
+
+	// Store the event id
+	d.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("events"))
+		err := b.Put(eventIDBytes, d.itob(1))
+		return err
+	})
+
+	return nil
+}
+
 func (d *Database) StoreMirror(downstreamID int, upstreamID int) error {
 	downstreamIDBytes := d.itob(downstreamID)
 	upstreamIDBytes := d.itob(upstreamID)
@@ -120,6 +147,20 @@ func (d *Database) GetID(bucket string, id int) (int, error) {
 		log.Debugf("Getting %d from %s = %d\n", id, bucket, val)
 		return val, nil
 	}
+}
+
+func (d *Database) SeenEvent(eventIDStr string) (bool, error) {
+	eventID, err := strconv.ParseInt(eventIDStr, 10, 64)
+	if err != nil {
+		panic("wat")
+	}
+
+	val, err := d.GetID("events", int(eventID))
+	if val == 1 {
+		return true, err
+	}
+
+	return false, err
 }
 
 func (d *Database) GetDownstreamID(upstreamID int) (int, error) {
