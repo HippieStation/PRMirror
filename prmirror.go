@@ -103,8 +103,9 @@ func (p PRMirror) MirrorPR(PREvent *github.PullRequestEvent) {
 	log.Infof("Mirroring PR [%d]: %s from ", PREvent.PullRequest.GetNumber(), PREvent.PullRequest.GetTitle(), PREvent.PullRequest.User.GetLogin())
 
 	base := "master"
+	title := "[MIRROR] " + *PREvent.PullRequest.Title
 	newPR := github.NewPullRequest{}
-	newPR.Title = PREvent.PullRequest.Title
+	newPR.Title = &title
 	newPR.Body = PREvent.PullRequest.Body
 	newPR.Base = &base
 	newPR.Head = PREvent.PullRequest.Head.Label
