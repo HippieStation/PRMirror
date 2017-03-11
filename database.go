@@ -27,7 +27,7 @@ func (d *Database) Close() {
 	d.db.Close()
 }
 
-func (d *Database) StoreMirror(downstreamID int, upstreamID int) error {
+func (d *Database) StoreMirror(downstreamID byte, upstreamID byte) error {
 
 	// Store the upstream->downstream id
 	d.db.Update(func(tx *bolt.Tx) error {
@@ -46,7 +46,7 @@ func (d *Database) StoreMirror(downstreamID int, upstreamID int) error {
 	return nil
 }
 
-func (d *Database) GetDownstreamID(upstreamID int) []byte {
+func (d *Database) GetDownstreamID(upstreamID byte) []byte {
 	var retval = []byte{0}
 	d.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("up2down"))
@@ -57,7 +57,7 @@ func (d *Database) GetDownstreamID(upstreamID int) []byte {
 	return retval
 }
 
-func (d *Database) GetUpstreamID(downstreamID int) []byte {
+func (d *Database) GetUpstreamID(downstreamID byte) []byte {
 	var retval = []byte{0}
 	d.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("down2up"))
