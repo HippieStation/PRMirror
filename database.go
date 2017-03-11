@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"encoding/binary"
 
+	"fmt"
 	"github.com/boltdb/bolt"
 )
 
@@ -18,6 +19,22 @@ func NewDatabase() *Database {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	db.Update(func(tx *bolt.Tx) error {
+		_, err := tx.CreateBucketIfNotExists([]byte("up2down"))
+		if err != nil {
+			return fmt.Errorf("create bucket: %s", err)
+		}
+		return nil
+	})
+
+	db.Update(func(tx *bolt.Tx) error {
+		_, err := tx.CreateBucketIfNotExists([]byte("down2up"))
+		if err != nil {
+			return fmt.Errorf("create bucket: %s", err)
+		}
+		return nil
+	})
 
 	return &Database{db}
 }
