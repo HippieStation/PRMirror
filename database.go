@@ -17,10 +17,22 @@ func NewDatabase() *Database {
 	return &Database{db}
 }
 
-func (b *Database) Path() string {
-	return b.db.Path()
+func (d *Database) Path() string {
+	return d.db.Path()
 }
 
-func (b *Database) Close() {
-	b.db.Close()
+func (d *Database) Close() {
+	d.db.Close()
+}
+
+func (d *Database) StoreMirror(downstreamID int, upstreamID int) bool {
+	return false
+}
+
+func (d *Database) GetDownstreamID(upstreamID int) int {
+	return 0
+}
+
+func (d *Database) GetUpstreamID(downstreamID int) int {
+	return 0
 }
