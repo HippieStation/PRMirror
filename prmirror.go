@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 
-	"fmt"
-
 	"github.com/google/go-github/github"
 )
 
@@ -75,7 +73,7 @@ func (p PRMirror) InitialImport() {
 	}
 
 	for _, pr := range prs {
-		fmt.Printf("[%d] - %s\n", pr.GetID(), pr.GetTitle())
+		log.Printf("[%d] - %s\n", pr.GetID(), pr.GetTitle())
 	}
 }
 
