@@ -3,6 +3,9 @@ package main
 // TODO: Make this less bad, all of it
 
 import (
+	"bytes"
+	"encoding/binary"
+
 	"github.com/boltdb/bolt"
 )
 
@@ -27,19 +30,30 @@ func (d *Database) Close() {
 	d.db.Close()
 }
 
+func (d *Database) IntToByteArray(intIn int) []byte {
+	buf := new(bytes.Buffer)
+	err := binary.Write(buf, binary.LittleEndian, intIn)
+	if err != nil {
+		panic(err)
+	}
+	return buf.Bytes()
+}
+
 func (d *Database) StoreMirror(downstreamID int, upstreamID int) error {
+	downstreamIDBytes := d.IntToByteArray(downstreamID)
+	upstreamIDBytes := d.IntToByteArray(upstreamID)
 
 	// Store the upstream->downstream id
 	d.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("up2down"))
-		err := b.Put([]byte(upstreamID), []byte(downstreamID))
+		err := b.Put(upstreamIDBytes, downstreamIDBytes)
 		return err
 	})
 
 	// Store the upstream->downstream id
 	d.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("down2up"))
-		err := b.Put([]byte(downstreamID), []byte(upstreamID))
+		err := b.Put(downstreamIDBytes, upstreamIDBytes)
 		return err
 	})
 
@@ -47,10 +61,12 @@ func (d *Database) StoreMirror(downstreamID int, upstreamID int) error {
 }
 
 func (d *Database) GetDownstreamID(upstreamID int) []byte {
+	upstreamIDBytes := d.IntToByteArray(upstreamID)
+
 	var retval = []byte{0}
 	d.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("up2down"))
-		v := b.Get([]byte(upstreamID))
+		v := b.Get(upstreamIDBytes)
 		copy(retval, v)
 		return nil
 	})
@@ -58,10 +74,12 @@ func (d *Database) GetDownstreamID(upstreamID int) []byte {
 }
 
 func (d *Database) GetUpstreamID(downstreamID int) []byte {
+	downstreamIDBytes := d.IntToByteArray(downstreamID)
+
 	var retval = []byte{0}
 	d.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("down2up"))
-		v := b.Get([]byte(downstreamID))
+		v := b.Get(downstreamIDBytes)
 		copy(retval, v)
 		return nil
 	})
