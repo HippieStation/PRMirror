@@ -51,7 +51,7 @@ func (p PRMirror) Run() {
 }
 
 func (p PRMirror) MirrorPR(PREvent *github.PullRequestEvent) {
-	log.Debugf("Mirroring new PR: %s\n", PREvent.PullRequest.GetTitle())
+	log.Infof("Mirroring PR [%d]: %s from ", PREvent.PullRequest.GetNumber(), PREvent.PullRequest.GetTitle(), PREvent.PullRequest.User.GetLogin())
 }
 
 func (p PRMirror) AddLabels(id int, tags []string) bool {
