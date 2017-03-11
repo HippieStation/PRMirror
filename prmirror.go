@@ -74,7 +74,7 @@ func (p PRMirror) InitialImport() {
 	}
 
 	for _, pr := range prs {
-		log.Printf("[%d] - %s\n", pr.GetID(), pr.GetTitle())
+		log.Infof("[%d] - %s\n", pr.GetNumber(), pr.GetTitle())
 	}
 }
 
