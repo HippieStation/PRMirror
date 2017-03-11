@@ -26,6 +26,8 @@ func main() {
 
 	Configuration := Config{}.Init()
 
+	Database := NewDatabase()
+
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: Configuration.GitHubToken},
@@ -38,6 +40,7 @@ func main() {
 		GitHubClient:  client,
 		Context:       &ctx,
 		Configuration: &Configuration,
+		Database:      Database,
 	}
 
 	if InitialImport {
@@ -45,4 +48,6 @@ func main() {
 	} else {
 		PRMirrorer.Run()
 	}
+
+	defer Database.Close()
 }

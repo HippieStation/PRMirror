@@ -18,6 +18,7 @@ type PRMirror struct {
 	GitHubClient  *github.Client
 	Context       *context.Context
 	Configuration *Config
+	Database      *Database
 }
 
 func (p PRMirror) HandlePREvent(prEvent *github.PullRequestEvent) {
