@@ -32,7 +32,7 @@ func (d *Database) Close() {
 
 func (d *Database) IntToByteArray(intIn int) []byte {
 	buf := new(bytes.Buffer)
-	err := binary.Write(buf, binary.LittleEndian, intIn)
+	err := binary.Write(buf, binary.LittleEndian, int64(intIn))
 	if err != nil {
 		panic(err)
 	}

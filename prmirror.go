@@ -74,7 +74,11 @@ func (p PRMirror) InitialImport() {
 	}
 
 	for _, pr := range prs {
-		log.Infof("[%d] - %s\n", pr.GetNumber(), pr.GetTitle())
+		if p.Database.GetUpstreamID(pr.GetNumber()) != nil {
+			log.Infof("DUP: [%d] - %s\n", pr.GetNumber(), pr.GetTitle())
+		} else {
+			log.Infof("NEW: [%d] - %s\n", pr.GetNumber(), pr.GetTitle())
+		}
 	}
 }
 
