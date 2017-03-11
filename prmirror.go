@@ -18,6 +18,20 @@ type PRMirror struct {
 	Configuration *Config
 }
 
+func (p PRMirror) HandlePREvent(prEvent *github.PullRequestEvent) {
+	prAction := prEvent.GetAction()
+
+	log.Debugf("%s\n", prEvent.PullRequest.GetURL())
+
+	if prAction == "opened" {
+		//TODO: Check if we already have an open PR for this and add a comment saying upstream reopened it and remove the upsteam closed tag
+		p.MirrorPR(prEvent)
+	} else if prAction == "closed" {
+
+		//AddLabel("Upstream Closed")
+	}
+}
+
 func (p PRMirror) Run() {
 	events, _, err := p.GitHubClient.Activity.ListRepositoryEvents(*p.Context, p.Configuration.UpstreamOwner, p.Configuration.UpstreamRepo, nil)
 	if _, ok := err.(*github.RateLimitError); ok {
@@ -26,26 +40,16 @@ func (p PRMirror) Run() {
 	}
 
 	for _, event := range events {
+		eventType := event.GetType()
 
-		if *event.Type == "PullRequestEvent" {
+		if eventType == "PullRequestEvent" {
 			prEvent := github.PullRequestEvent{}
-
 			err = json.Unmarshal(event.GetRawPayload(), &prEvent)
 			if err != nil {
 				panic(err)
 			}
 
-			prAction := prEvent.GetAction()
-
-			log.Debugf("%s\n", prEvent.PullRequest.GetURL())
-
-			if prAction == "opened" {
-				//TODO: Check if we already have an open PR for this and add a comment saying upstream reopened it and remove the upsteam closed tag
-				p.MirrorPR(&prEvent)
-			} else if prAction == "closed" {
-
-				//AddLabel("Upstream Closed")
-			}
+			p.HandlePREvent(&prEvent)
 		}
 	}
 }
