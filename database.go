@@ -3,10 +3,10 @@ package main
 // TODO: Make this less bad, all of it
 
 import (
-	"bytes"
 	"encoding/binary"
 
 	"fmt"
+
 	"github.com/boltdb/bolt"
 )
 
@@ -39,6 +39,32 @@ func NewDatabase() *Database {
 	return &Database{db}
 }
 
+func (d *Database) DumpDB() {
+	log.Debugf("down2up")
+	d.db.View(func(tx *bolt.Tx) error {
+		// Assume bucket exists and has keys
+		b := tx.Bucket([]byte("down2up"))
+
+		b.ForEach(func(k, v []byte) error {
+			log.Debugf("key=%d, value=%d\n", d.btoi(k), d.btoi(v))
+			return nil
+		})
+		return nil
+	})
+
+	log.Debugf("up2down")
+	d.db.View(func(tx *bolt.Tx) error {
+		// Assume bucket exists and has keys
+		b := tx.Bucket([]byte("up2down"))
+
+		b.ForEach(func(k, v []byte) error {
+			log.Debugf("key=%d, value=%d\n", d.btoi(k), d.btoi(v))
+			return nil
+		})
+		return nil
+	})
+}
+
 func (d *Database) Path() string {
 	return d.db.Path()
 }
@@ -47,18 +73,19 @@ func (d *Database) Close() {
 	d.db.Close()
 }
 
-func (d *Database) IntToByteArray(intIn int) []byte {
-	buf := new(bytes.Buffer)
-	err := binary.Write(buf, binary.LittleEndian, int64(intIn))
-	if err != nil {
-		panic(err)
-	}
-	return buf.Bytes()
+func (d *Database) itob(v int) []byte {
+	b := make([]byte, 8)
+	binary.BigEndian.PutUint64(b, uint64(v))
+	return b
+}
+
+func (d *Database) btoi(v []byte) int {
+	return int(binary.BigEndian.Uint64(v))
 }
 
 func (d *Database) StoreMirror(downstreamID int, upstreamID int) error {
-	downstreamIDBytes := d.IntToByteArray(downstreamID)
-	upstreamIDBytes := d.IntToByteArray(upstreamID)
+	downstreamIDBytes := d.itob(downstreamID)
+	upstreamIDBytes := d.itob(upstreamID)
 
 	// Store the upstream->downstream id
 	d.db.Update(func(tx *bolt.Tx) error {
@@ -77,28 +104,28 @@ func (d *Database) StoreMirror(downstreamID int, upstreamID int) error {
 	return nil
 }
 
-func (d *Database) GetDownstreamID(upstreamID int) []byte {
-	upstreamIDBytes := d.IntToByteArray(upstreamID)
+func (d *Database) GetID(bucket string, id int) (int, error) {
+	// Start read-only transaction.
+	tx, err := d.db.Begin(false)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
 
-	var retval = []byte{0}
-	d.db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("up2down"))
-		v := b.Get(upstreamIDBytes)
-		copy(retval, v)
-		return nil
-	})
-	return retval
+	if v := tx.Bucket([]byte(bucket)).Get(d.itob(id)); v == nil {
+		log.Debugf("Getting %d from %s = nil\n", id, bucket)
+		return 0, nil
+	} else {
+		val := d.btoi(v)
+		log.Debugf("Getting %d from %s = %d\n", id, bucket, val)
+		return val, nil
+	}
 }
 
-func (d *Database) GetUpstreamID(downstreamID int) []byte {
-	downstreamIDBytes := d.IntToByteArray(downstreamID)
+func (d *Database) GetDownstreamID(upstreamID int) (int, error) {
+	return d.GetID("up2down", upstreamID)
+}
 
-	var retval = []byte{0}
-	d.db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("down2up"))
-		v := b.Get(downstreamIDBytes)
-		copy(retval, v)
-		return nil
-	})
-	return retval
+func (d *Database) GetUpstreamID(downstreamID int) (int, error) {
+	return d.GetID("down2up", downstreamID)
 }

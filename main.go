@@ -13,9 +13,12 @@ import (
 
 var PRMirrorer = PRMirror{}
 var InitialImport = false
+var DumpDB = false
 
 func init() {
 	flag.BoolVar(&InitialImport, "InitialImport", false, "Import all current PRs from Upstream")
+	flag.BoolVar(&DumpDB, "DumpDB", false, "Dump the database to stdout")
+
 	flag.Parse()
 }
 
@@ -45,6 +48,8 @@ func main() {
 
 	if InitialImport {
 		PRMirrorer.InitialImport()
+	} else if DumpDB {
+		PRMirrorer.Database.DumpDB()
 	} else {
 		PRMirrorer.Run()
 	}

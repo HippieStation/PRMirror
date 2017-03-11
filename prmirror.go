@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 
+	"time"
+
 	"github.com/google/go-github/github"
 )
 
@@ -26,7 +28,7 @@ func (p PRMirror) HandlePREvent(prEvent *github.PullRequestEvent) {
 
 	if prAction == "opened" {
 		//TODO: Check if we already have an open PR for this and add a comment saying upstream reopened it and remove the upsteam closed tag
-		p.MirrorPR(prEvent)
+		p.MirrorPR(prEvent.PullRequest)
 	} else if prAction == "closed" {
 
 		//AddLabel("Upstream Closed")
@@ -74,10 +76,22 @@ func (p PRMirror) InitialImport() {
 	}
 
 	for _, pr := range prs {
-		if p.Database.GetUpstreamID(pr.GetNumber()) != nil {
+		prNum, err := p.Database.GetDownstreamID(pr.GetNumber())
+		if err != nil {
+			panic(err)
+		}
+
+		if prNum != 0 {
 			log.Infof("DUP: [%d] - %s\n", pr.GetNumber(), pr.GetTitle())
 		} else {
 			log.Infof("NEW: [%d] - %s\n", pr.GetNumber(), pr.GetTitle())
+			prID, err := p.MirrorPR(pr)
+			if err != nil {
+				panic(err)
+			}
+			p.Database.StoreMirror(prID, pr.GetNumber())
+
+			time.Sleep(2 * time.Second)
 		}
 	}
 }
@@ -103,18 +117,26 @@ func (p PRMirror) Run() {
 	}
 }
 
-func (p PRMirror) MirrorPR(PREvent *github.PullRequestEvent) {
-	log.Infof("Mirroring PR [%d]: %s from ", PREvent.PullRequest.GetNumber(), PREvent.PullRequest.GetTitle(), PREvent.PullRequest.User.GetLogin())
+func (p PRMirror) MirrorPR(pr *github.PullRequest) (int, error) {
+	log.Infof("Mirroring PR [%d]: %s from ", pr.GetNumber(), pr.GetTitle(), pr.User.GetLogin())
 
 	base := "master"
-	title := "[MIRROR] " + *PREvent.PullRequest.Title
+	maintainerCanModify := false
+	title := "[MIRROR] " + pr.GetTitle()
+
 	newPR := github.NewPullRequest{}
 	newPR.Title = &title
-	newPR.Body = PREvent.PullRequest.Body
+	newPR.Body = pr.Body
 	newPR.Base = &base
-	newPR.Head = PREvent.PullRequest.Head.Label
+	newPR.Head = pr.Head.Label
+	newPR.MaintainerCanModify = &maintainerCanModify
 
-	p.GitHubClient.PullRequests.Create(*p.Context, p.Configuration.DownstreamOwner, p.Configuration.DownstreamOwner, &newPR)
+	pr, _, err := p.GitHubClient.PullRequests.Create(*p.Context, p.Configuration.DownstreamOwner, p.Configuration.DownstreamRepo, &newPR)
+	if err != nil {
+		return 0, err
+	}
+
+	return pr.GetNumber(), nil
 }
 
 func (p PRMirror) AddLabels(id int, tags []string) bool {
