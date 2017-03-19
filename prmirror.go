@@ -67,13 +67,7 @@ func (p PRMirror) GetRepoEvents() ([]*github.Event, int64, error) {
 		events, resp, err := p.GitHubClient.Activity.ListRepositoryEvents(*p.Context, p.Configuration.UpstreamOwner, p.Configuration.UpstreamRepo, opt)
 		if err != nil {
 			log.Errorf("Error while listing repository events. %s", err.Error())
-
-			pollInterval, err = strconv.ParseInt(resp.Response.Header.Get("X-Poll-Interval"), 10, 64)
-			if err != nil {
-				panic(err)
-			}
-
-			return nil, pollInterval, err
+			return nil, 60, err
 		}
 
 		allEvents = append(allEvents, events...)
