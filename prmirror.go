@@ -3,12 +3,10 @@ package main
 import (
 	"context"
 	"encoding/json"
-
-	"time"
-
 	"fmt"
-
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/google/go-github/github"
 )
