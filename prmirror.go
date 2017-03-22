@@ -172,7 +172,7 @@ func (p PRMirror) MirrorPR(pr *github.PullRequest) (int, error) {
 	base := "master"
 	maintainerCanModify := false
 	title := fmt.Sprintf("[MIRROR] %s", pr.GetTitle())
-	body := fmt.Sprintf("Original PR: %s\n--------------------\n%s", pr.GetHTMLURL(), pr.GetBody())
+	body := fmt.Sprintf("Original PR: %s\n--------------------\n%s", pr.GetHTMLURL(), strings.Replace(pr.GetBody(), "@", "@ ", -1))
 
 	newPR := github.NewPullRequest{}
 	newPR.Title = &title
