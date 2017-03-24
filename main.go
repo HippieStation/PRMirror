@@ -6,6 +6,8 @@ import (
 
 	"flag"
 
+	"fmt"
+
 	"github.com/google/go-github/github"
 	"github.com/op/go-logging"
 	"golang.org/x/oauth2"
@@ -28,6 +30,11 @@ func main() {
 	logging.SetBackend(backendFormatter)
 
 	Configuration := Config{}.Init()
+
+	if _, err := os.Stat(fmt.Sprintf("%s%s", Configuration.RepoPath, Configuration.ToolPath)); os.IsNotExist(err) {
+		log.Errorf("Could not find the shell script located at %s%s\n", Configuration.RepoPath, Configuration.ToolPath)
+		return
+	}
 
 	Database := NewDatabase()
 

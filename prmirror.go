@@ -4,9 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
+
+	"os"
 
 	"github.com/google/go-github/github"
 )
@@ -167,7 +170,20 @@ func (p PRMirror) Run() {
 func (p PRMirror) MirrorPR(pr *github.PullRequest) (int, error) {
 	log.Infof("Mirroring PR [%d]: %s from %s\n", pr.GetNumber(), pr.GetTitle(), pr.User.GetLogin())
 
-	base := "master"
+	cmd := exec.Command(fmt.Sprintf("%s%s", p.Configuration.RepoPath, p.Configuration.ToolPath), strconv.Itoa(pr.GetNumber()))
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err := cmd.Start()
+	if err != nil {
+		panic(err)
+	}
+	err = cmd.Wait()
+	if err != nil {
+		panic(err)
+	}
+
+	base := fmt.Sprintf("upstream-merge-%d", pr.GetNumber())
+	head := "HippieStation/HippieStation"
 	maintainerCanModify := false
 	title := fmt.Sprintf("[MIRROR] %s", pr.GetTitle())
 	body := fmt.Sprintf("Original PR: %s\n--------------------\n%s", pr.GetHTMLURL(), strings.Replace(pr.GetBody(), "@", "@ ", -1))
@@ -176,10 +192,10 @@ func (p PRMirror) MirrorPR(pr *github.PullRequest) (int, error) {
 	newPR.Title = &title
 	newPR.Body = &body
 	newPR.Base = &base
-	newPR.Head = pr.Head.Label
+	newPR.Head = &head
 	newPR.MaintainerCanModify = &maintainerCanModify
 
-	pr, _, err := p.GitHubClient.PullRequests.Create(*p.Context, p.Configuration.DownstreamOwner, p.Configuration.DownstreamRepo, &newPR)
+	pr, _, err = p.GitHubClient.PullRequests.Create(*p.Context, p.Configuration.DownstreamOwner, p.Configuration.DownstreamRepo, &newPR)
 	if err != nil {
 		return 0, err
 	}

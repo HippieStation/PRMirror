@@ -14,6 +14,8 @@ type Config struct {
 	UpstreamRepo    string
 	DownstreamOwner string
 	DownstreamRepo  string
+	RepoPath        string
+	ToolPath        string
 }
 
 // Init will initalize the config file
