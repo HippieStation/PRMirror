@@ -184,7 +184,7 @@ func (p PRMirror) MirrorPR(pr *github.PullRequest) (int, error) {
 	}
 
 	base := fmt.Sprintf("upstream-merge-%d", pr.GetNumber())
-	head := "HippieStation/HippieStation"
+	head := "master"
 	maintainerCanModify := true // we own it so yes
 	title := fmt.Sprintf("[MIRROR] %s", pr.GetTitle())
 	body := fmt.Sprintf("Original PR: %s\n--------------------\n%s", pr.GetHTMLURL(), strings.Replace(pr.GetBody(), "@", "@ ", -1))
