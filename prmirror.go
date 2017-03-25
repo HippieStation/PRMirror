@@ -183,6 +183,8 @@ func (p PRMirror) MirrorPR(pr *github.PullRequest) (int, error) {
 		panic(err)
 	}
 
+	cmdoutput, err := cmd.Output()
+
 	base := "master"
 	head := fmt.Sprintf("upstream-merge-%d", pr.GetNumber())
 	maintainerCanModify := true // we own it so yes
@@ -199,6 +201,10 @@ func (p PRMirror) MirrorPR(pr *github.PullRequest) (int, error) {
 	pr, _, err = p.GitHubClient.PullRequests.Create(*p.Context, p.Configuration.DownstreamOwner, p.Configuration.DownstreamRepo, &newPR)
 	if err != nil {
 		return 0, err
+	}
+
+	if strings.Contains(string(cmdoutput), "Rejected hunk") {
+		p.AddLabels(pr.GetNumber(), []string{"Auto Merge Rejections"})
 	}
 
 	return pr.GetNumber(), nil
