@@ -3,5 +3,7 @@
   "UpstreamOwner": "",
   "UpstreamRepo": "",
   "DownstreamOwner": "",
-  "DownstreamRepo": ""
+  "DownstreamRepo": "",
+  "RepoPath": "",
+  "ToolPath": ""
 }
