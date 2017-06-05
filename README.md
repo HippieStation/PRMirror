@@ -3,7 +3,7 @@ Mirror's pull requests from one repository to another
 
 ## Getting started
 - This is best off done on a fresh repository as it's likely that you have lots of modified upstream code. We did this for our latest branch https://github.com/HippieStation/HippieStation - We try to maintain modular code by using an additional folder for all of our code: https://github.com/HippieStation/HippieStation/tree/master/hippiestation
-- Compile the code by running `go get` and then `go run`
+- Compile the code by running `go get` and then `go build`
 - Copy the following file into your repository (merge-upstream-pull-request.sh)[https://github.com/HippieStation/HippieStation/blob/ef6b2bf0816fa1424c0a120a7c8b1d354616e119/hippiestation/tools/merge-upstream-pull-request.sh]
 - Make sure that `merge-upstream-pull-request.sh` is marked as executable (`chmod +x merge-upstream-pull-request.sh`)
 - Clone the repo to disk
