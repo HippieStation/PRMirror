@@ -17,6 +17,9 @@ Mirror's pull requests from one repository to another
     - DownstreamRepo for us is HippieStation
   - RepoPath is the path to the repository on disk, for us this is: `/home/prmirror/HippieStation/`
   - ToolPath is the path to the tool from within the repository, for us this is: `hippiestation/tools/merge-upstream-pull-request.sh`
+  - UseWebhook - should be set to true if you're using the GitHub webhook system instead of scraping the events API
+  - WebhookPort - if you're using the webhook system, set the port for the HTTP server to listen on
+  - WebhookSecret - if you're using the webhook system, generate a secure secret and set it both on GitHub and in here so we can verify the payloads 
 - Make sure before you run the PRMirrorer for the first time that you are 1-1 with your upstream.
 - Run the PRMirrorer standalone first to make sure it works, it will open some PRs (just close these, this is a bug which someone could fix), if it polls and is working, continue to set it up as a service and make sure that it doesn't go down
 - You're done.
