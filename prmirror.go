@@ -27,20 +27,16 @@ type PRMirror struct {
 }
 
 func (p PRMirror) HandlePREvent(prEvent *github.PullRequestEvent) {
+	log.Debugf("Handling PR Event: %s\n", prEvent.PullRequest.GetURL())
 
 	prAction := prEvent.GetAction()
-
-	log.Debugf("%s\n", prEvent.PullRequest.GetURL())
-
-	if prAction == "closed" {
-		if prEvent.PullRequest.GetMerged() == true {
-			prID, err := p.MirrorPR(prEvent.PullRequest)
-			if err != nil {
-				log.Errorf("Error while creating a new PR: %s\n", err.Error())
-			} else {
-				p.AddLabels(prID, []string{"Upstream PR Merged"})
-				p.Database.StoreMirror(prID, prEvent.PullRequest.GetNumber())
-			}
+	if prAction == "closed" && prEvent.PullRequest.GetMerged() == true {
+		prID, err := p.MirrorPR(prEvent.PullRequest)
+		if err != nil {
+			log.Errorf("Error while creating a new PR: %s\n", err.Error())
+		} else {
+			p.AddLabels(prID, []string{"Upstream PR Merged"})
+			p.Database.StoreMirror(prID, prEvent.PullRequest.GetNumber())
 		}
 	}
 }
