@@ -85,59 +85,6 @@ func (p PRMirror) GetRepoEvents() ([]*github.Event, int64, error) {
 	return allEvents, pollInterval, nil
 }
 
-func (p PRMirror) GetOpenPRs() ([]*github.PullRequest, error) {
-	var allPrs []*github.PullRequest
-
-	opt := &github.PullRequestListOptions{
-		ListOptions: github.ListOptions{PerPage: 100},
-	}
-
-	for {
-		log.Debugf("Getting OpenPRs Page %d\n", opt.ListOptions.Page)
-
-		prs, resp, err := p.GitHubClient.PullRequests.List(*p.Context, p.Configuration.UpstreamOwner, p.Configuration.UpstreamRepo, opt)
-		if p.isRatelimit(err) {
-			return nil, err
-		}
-
-		allPrs = append(allPrs, prs...)
-		if resp.NextPage == 0 {
-			break
-		}
-		opt.ListOptions.Page = resp.NextPage
-	}
-
-	return allPrs, nil
-}
-
-func (p PRMirror) InitialImport() {
-	prs, err := p.GetOpenPRs()
-	if p.isRatelimit(err) {
-		return
-	}
-
-	for _, pr := range prs {
-		prNum, err := p.Database.GetDownstreamID(pr.GetNumber())
-		if err != nil {
-			panic(err)
-		}
-
-		if prNum != 0 {
-			log.Infof("DUP: [%d] - %s\n", pr.GetNumber(), pr.GetTitle())
-		} else {
-			log.Infof("NEW: [%d] - %s\n", pr.GetNumber(), pr.GetTitle())
-			prID, err := p.MirrorPR(pr)
-			if err != nil {
-				log.Errorf("Error while creating a new PR: %s\n", err.Error())
-			} else {
-				p.Database.StoreMirror(prID, pr.GetNumber())
-				p.AddLabels(prID, []string{"Upstream PR Open"})
-			}
-			time.Sleep(2 * time.Second)
-		}
-	}
-}
-
 func (p PRMirror) Run() {
 	for {
 		events, pollInterval, err := p.GetRepoEvents()

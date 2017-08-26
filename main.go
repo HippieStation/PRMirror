@@ -14,11 +14,11 @@ import (
 )
 
 var PRMirrorer = PRMirror{}
-var InitialImport = false
+var CreateLabels = false
 var DumpDB = false
 
 func init() {
-	flag.BoolVar(&InitialImport, "InitialImport", false, "Import all current PRs from Upstream")
+	flag.BoolVar(&CreateLabels, "CreateLabels", false, "Create all of the labels")
 	flag.BoolVar(&DumpDB, "DumpDB", false, "Dump the database to stdout")
 
 	flag.Parse()
@@ -54,12 +54,10 @@ func main() {
 		Database:      Database,
 	}
 
-	if InitialImport {
+	if CreateLabels {
 		PRMirrorer.CreateLabel("Upstream PR Open", "28a745")
 		PRMirrorer.CreateLabel("Upstream PR Closed", "cb2431")
 		PRMirrorer.CreateLabel("Upstream PR Merged", "6f42c1")
-
-		PRMirrorer.InitialImport()
 	} else if DumpDB {
 		PRMirrorer.Database.DumpDB()
 	} else {
