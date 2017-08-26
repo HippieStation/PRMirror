@@ -115,16 +115,10 @@ func (p PRMirror) MirrorPR(pr *github.PullRequest) (int, error) {
 
 	cmd := exec.Command(fmt.Sprintf("%s%s", p.Configuration.RepoPath, p.Configuration.ToolPath), strconv.Itoa(pr.GetNumber()), pr.GetTitle())
 	cmd.Dir = p.Configuration.RepoPath
-	err := cmd.Start()
-	if err != nil {
-		panic(err)
-	}
-	err = cmd.Wait()
-	if err != nil {
-		panic(err)
-	}
-
 	cmdoutput, err := cmd.CombinedOutput()
+	if err != nil {
+		panic(err)
+	}
 
 	log.Debug(cmdoutput)
 
