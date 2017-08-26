@@ -17,6 +17,7 @@ type Config struct {
 	RepoPath        string
 	ToolPath        string
 	UseWebhook      bool
+	WebhookPort     int
 	WebhookSecret   string
 }
 

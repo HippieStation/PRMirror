@@ -7,5 +7,6 @@
   "RepoPath": "",
   "ToolPath": "",
   "UseWebhook": false,
+  "WebhookPort": 6000,
   "WebhookSecret": ""
 }
