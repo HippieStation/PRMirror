@@ -16,6 +16,8 @@ type Config struct {
 	DownstreamRepo  string
 	RepoPath        string
 	ToolPath        string
+	UseWebhook      bool
+	WebhookSecret   string
 }
 
 // Init will initalize the config file
