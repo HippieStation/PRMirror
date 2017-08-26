@@ -9,7 +9,7 @@ import (
 	"fmt"
 
 	"github.com/google/go-github/github"
-	"github.com/op/go-logging"
+	logging "github.com/op/go-logging"
 	"golang.org/x/oauth2"
 )
 
@@ -60,8 +60,12 @@ func main() {
 		PRMirrorer.CreateLabel("Upstream PR Merged", "6f42c1")
 	} else if DumpDB {
 		PRMirrorer.Database.DumpDB()
+	}
+
+	if Configuration.UseWebhook {
+		PRMirrorer.RunWebhookListener()
 	} else {
-		PRMirrorer.Run()
+		PRMirrorer.RunEventScraper()
 	}
 
 	defer Database.Close()

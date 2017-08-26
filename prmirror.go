@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -14,11 +15,13 @@ import (
 	"github.com/google/go-github/github"
 )
 
+// MirroredPR contains the upstream and downstream PR ids
 type MirroredPR struct {
 	DownstreamID int
 	UpstreamID   int
 }
 
+// PRMirror contains various different variables
 type PRMirror struct {
 	GitHubClient  *github.Client
 	Context       *context.Context
@@ -26,7 +29,29 @@ type PRMirror struct {
 	Database      *Database
 }
 
-func (p PRMirror) HandlePREvent(prEvent *github.PullRequestEvent) {
+// GitHubEventMonitor passes in an instance of the PRMirror struct to all HTTP calls to the webhook listener
+type GitHubEventMonitor struct {
+	Mirrorer PRMirror
+}
+
+// HandleEvent handles github events and acts like an event handler
+func (p PRMirror) HandleEvent(event *github.Event) {
+	seenEvent, _ := p.Database.SeenEvent(event.GetID())
+	if seenEvent {
+		return
+	}
+
+	eventType := event.GetType()
+	if eventType != "PullRequestEvent" {
+		return
+	}
+
+	prEvent := github.PullRequestEvent{}
+	err := json.Unmarshal(event.GetRawPayload(), &prEvent)
+	if err != nil {
+		panic(err)
+	}
+
 	log.Debugf("Handling PR Event: %s\n", prEvent.PullRequest.GetURL())
 
 	prAction := prEvent.GetAction()
@@ -39,8 +64,10 @@ func (p PRMirror) HandlePREvent(prEvent *github.PullRequestEvent) {
 			p.Database.StoreMirror(prID, prEvent.PullRequest.GetNumber())
 		}
 	}
+	p.Database.AddEvent(event.GetID())
 }
 
+// Check if an error is a rate limit error
 func (p PRMirror) isRatelimit(err error) bool {
 	if _, ok := err.(*github.RateLimitError); ok {
 		// TODO: Maybe add some context here
@@ -50,6 +77,7 @@ func (p PRMirror) isRatelimit(err error) bool {
 	return false
 }
 
+// GetRepoEvents returns a list a list of RepoEvents
 func (p PRMirror) GetRepoEvents() ([]*github.Event, int64, error) {
 	var allEvents []*github.Event
 	var pollInterval = int64(0)
@@ -81,27 +109,13 @@ func (p PRMirror) GetRepoEvents() ([]*github.Event, int64, error) {
 	return allEvents, pollInterval, nil
 }
 
-func (p PRMirror) Run() {
+// RunEventScraper runs the GitHub repo event API scraper
+func (p PRMirror) RunEventScraper() {
 	for {
 		events, pollInterval, err := p.GetRepoEvents()
 		if err == nil {
 			for _, event := range events {
-				seenEvent, _ := p.Database.SeenEvent(event.GetID())
-
-				if !seenEvent {
-					eventType := event.GetType()
-
-					if eventType == "PullRequestEvent" {
-						prEvent := github.PullRequestEvent{}
-						err = json.Unmarshal(event.GetRawPayload(), &prEvent)
-						if err != nil {
-							panic(err)
-						}
-
-						p.HandlePREvent(&prEvent)
-						p.Database.AddEvent(event.GetID())
-					}
-				}
+				p.HandleEvent(event)
 			}
 		}
 
@@ -110,6 +124,35 @@ func (p PRMirror) Run() {
 	}
 }
 
+// ServeHTTP handles HTTP requests to the webhook endpoint
+func (s GitHubEventMonitor) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	payload, err := github.ValidatePayload(r, []byte(s.Mirrorer.Configuration.WebhookSecret))
+	if err != nil {
+		log.Errorf("Error validating the payload\n")
+		return
+	}
+	eventI, err := github.ParseWebHook(github.WebHookType(r), payload)
+	if err != nil {
+		log.Errorf("Error parsing the payload\n")
+	}
+
+	event, ok := eventI.(github.Event)
+	if !ok {
+		log.Errorf("Received an event which was not an event?: %s\n", eventI)
+		return
+	}
+
+	s.Mirrorer.HandleEvent(&event)
+}
+
+// RunWebhookListener acts a webhook listener which GitHub will call with events
+func (p PRMirror) RunWebhookListener() {
+	server := GitHubEventMonitor{Mirrorer: p}
+	err := http.ListenAndServe(fmt.Sprintf(":%d", p.Configuration.WebhookPort), server)
+	log.Fatal(err)
+}
+
+// MirrorPR will mirror a PR from an upstream to the downstream
 func (p PRMirror) MirrorPR(pr *github.PullRequest) (int, error) {
 	log.Infof("Mirroring PR [%d]: %s from %s\n", pr.GetNumber(), pr.GetTitle(), pr.User.GetLogin())
 
@@ -130,7 +173,7 @@ func (p PRMirror) MirrorPR(pr *github.PullRequest) (int, error) {
 
 	base := "master"
 	head := fmt.Sprintf("upstream-merge-%d", pr.GetNumber())
-	maintainerCanModify := true // we own it so yes
+	maintainerCanModify := true // We are the owner of the PR so we can specify this as true
 	title := fmt.Sprintf("[MIRROR] %s", pr.GetTitle())
 	body := fmt.Sprintf("Original PR: %s\n--------------------\n%s", pr.GetHTMLURL(), strings.Replace(pr.GetBody(), "@", "@ ", -1))
 
@@ -153,6 +196,7 @@ func (p PRMirror) MirrorPR(pr *github.PullRequest) (int, error) {
 	return pr.GetNumber(), nil
 }
 
+// CreateLabel creates a new label
 func (p PRMirror) CreateLabel(labelText string, labelColour string) bool {
 	label := github.Label{
 		Name:  &labelText,
@@ -168,6 +212,7 @@ func (p PRMirror) CreateLabel(labelText string, labelColour string) bool {
 	return true
 }
 
+// AddLabels adds label/s to a pull request
 func (p PRMirror) AddLabels(id int, labels []string) bool {
 	_, _, err := p.GitHubClient.Issues.AddLabelsToIssue(*p.Context, p.Configuration.DownstreamOwner, p.Configuration.DownstreamRepo, id, labels)
 	if err != nil {
@@ -178,6 +223,7 @@ func (p PRMirror) AddLabels(id int, labels []string) bool {
 	return true
 }
 
+// RemoveLabel Removes a label from a pull request
 func (p PRMirror) RemoveLabel(id int, labels string) bool {
 	_, err := p.GitHubClient.Issues.RemoveLabelForIssue(*p.Context, p.Configuration.DownstreamOwner, p.Configuration.DownstreamRepo, id, labels)
 	if err != nil {
@@ -188,6 +234,7 @@ func (p PRMirror) RemoveLabel(id int, labels string) bool {
 	return true
 }
 
+// AddComment adds a comment to a pull request
 func (p PRMirror) AddComment(id int, comment string) bool {
 	issueComment := github.IssueComment{}
 	issueComment.Body = &comment
