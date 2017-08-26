@@ -63,8 +63,10 @@ func main() {
 	}
 
 	if Configuration.UseWebhook {
+		log.Info("Using the webhook listener\n")
 		PRMirrorer.RunWebhookListener()
 	} else {
+		log.Info("Using the event scraper\n")
 		PRMirrorer.RunEventScraper()
 	}
 
