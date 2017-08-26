@@ -25,3 +25,4 @@ _testmain.go
 debug
 mirror.db
 mirror.db.lock
+.vs/
