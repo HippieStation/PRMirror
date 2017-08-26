@@ -52,6 +52,11 @@ func (p PRMirror) HandleEvent(event *github.Event) {
 		panic(err)
 	}
 
+	p.HandlePREvent(&prEvent)
+	p.Database.AddEvent(event.GetID())
+}
+
+func (p PRMirror) HandlePREvent(prEvent *github.PullRequestEvent) {
 	log.Debugf("Handling PR Event: %s\n", prEvent.PullRequest.GetURL())
 
 	prAction := prEvent.GetAction()
@@ -64,7 +69,6 @@ func (p PRMirror) HandleEvent(event *github.Event) {
 			p.Database.StoreMirror(prID, prEvent.PullRequest.GetNumber())
 		}
 	}
-	p.Database.AddEvent(event.GetID())
 }
 
 // RunEventScraper runs the GitHub repo event API scraper
@@ -89,18 +93,15 @@ func (s GitHubEventMonitor) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		log.Errorf("Error validating the payload\n")
 		return
 	}
-	eventI, err := github.ParseWebHook(github.WebHookType(r), payload)
+	event, err := github.ParseWebHook(github.WebHookType(r), payload)
 	if err != nil {
 		log.Errorf("Error parsing the payload\n")
 	}
 
-	event, ok := eventI.(github.Event)
-	if !ok {
-		log.Errorf("Received an event which was not an event?: %s\n", eventI)
-		return
+	switch event := event.(type) {
+	case *github.PullRequestEvent:
+		s.Mirrorer.HandlePREvent(event)
 	}
-
-	s.Mirrorer.HandleEvent(&event)
 }
 
 // RunWebhookListener acts a webhook listener which GitHub will call with events
