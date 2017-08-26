@@ -10,8 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"os"
-
 	"github.com/google/go-github/github"
 )
 
@@ -117,8 +115,6 @@ func (p PRMirror) MirrorPR(pr *github.PullRequest) (int, error) {
 
 	cmd := exec.Command(fmt.Sprintf("%s%s", p.Configuration.RepoPath, p.Configuration.ToolPath), strconv.Itoa(pr.GetNumber()), pr.GetTitle())
 	cmd.Dir = p.Configuration.RepoPath
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
 	err := cmd.Start()
 	if err != nil {
 		panic(err)
@@ -128,7 +124,9 @@ func (p PRMirror) MirrorPR(pr *github.PullRequest) (int, error) {
 		panic(err)
 	}
 
-	cmdoutput, err := cmd.Output()
+	cmdoutput, err := cmd.CombinedOutput()
+
+	log.Debug(cmdoutput)
 
 	base := "master"
 	head := fmt.Sprintf("upstream-merge-%d", pr.GetNumber())
