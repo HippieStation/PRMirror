@@ -61,10 +61,10 @@ func (p PRMirror) HandlePREvent(prEvent *github.PullRequestEvent) {
 	repoOwner := prEvent.Repo.Owner.GetName()
 	prEventURL := prEvent.PullRequest.GetURL()
 
-	if repoName != p.Configuration.DownstreamRepo {
+	if repoName != p.Configuration.UpstreamRepo {
 		log.Warningf("Ignoring PR Event: %s because %s != %s\n", prEventURL, repoName, p.Configuration.UpstreamRepo)
 		return
-	} else if repoOwner != p.Configuration.DownstreamOwner {
+	} else if repoOwner != p.Configuration.UpstreamOwner {
 		log.Warningf("Ignoring PR Event: %s because %s != %s\n", prEventURL, repoOwner, p.Configuration.UpstreamOwner)
 		return
 	}
