@@ -58,7 +58,7 @@ func (p PRMirror) HandleEvent(event *github.Event) {
 
 func (p PRMirror) HandlePREvent(prEvent *github.PullRequestEvent) {
 	repoName := prEvent.Repo.GetName()
-	repoOwner := prEvent.Repo.Owner.GetName()
+	repoOwner := prEvent.Repo.Organization.GetName()
 	prEventURL := prEvent.PullRequest.GetURL()
 
 	if repoName != p.Configuration.UpstreamRepo {
