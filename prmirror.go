@@ -57,14 +57,14 @@ func (p PRMirror) HandleEvent(event *github.Event) {
 }
 
 func (p PRMirror) HandlePREvent(prEvent *github.PullRequestEvent) {
-	repoName := prEvent.Repo.GetName()
+	//repoName := prEvent.Repo.GetName()
 	//repoOwner := prEvent.Repo.Owner.GetName()
 	prEventURL := prEvent.PullRequest.GetURL()
 
-	if repoName != p.Configuration.DownstreamRepo {
-		log.Warningf("Ignoring PR Event: %s because %s != %s\n", prEventURL, repoName, p.Configuration.UpstreamRepo)
-		return
-	} //else if repoOwner != p.Configuration.DownstreamOwner {
+	//if p.Configuration.UseWebhook repoName != p.Configuration.DownstreamRepo {
+	//	log.Warningf("Ignoring PR Event: %s because %s != %s\n", prEventURL, repoName, p.Configuration.UpstreamRepo)
+	//	return
+	//} //else if repoOwner != p.Configuration.DownstreamOwner {
 	//log.Warningf("Ignoring PR Event: %s because %s != %s\n", prEventURL, repoOwner, p.Configuration.UpstreamOwner)
 	//return
 	//}
