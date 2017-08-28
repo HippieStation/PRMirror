@@ -137,8 +137,9 @@ func (p PRMirror) MirrorPR(pr *github.PullRequest) (int, error) {
 		panic(err)
 	}
 
-	log.Debug(string(cmdoutput))
-	ioutil.WriteFile(fmt.Sprintf("./logs/upstream-merge-%d.log", pr.GetNumber()), cmdoutput, 0600)
+	logpath := fmt.Sprintf("./logs/upstream-merge-%d.log", pr.GetNumber())
+	ioutil.WriteFile(logpath, cmdoutput, 0600)
+	log.Debugf("Wrote log to %s\n", logpath)
 
 	base := "master"
 	head := fmt.Sprintf("upstream-merge-%d", pr.GetNumber())
