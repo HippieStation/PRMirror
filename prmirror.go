@@ -57,18 +57,7 @@ func (p PRMirror) HandleEvent(event *github.Event) {
 }
 
 func (p PRMirror) HandlePREvent(prEvent *github.PullRequestEvent) {
-	repoName := prEvent.Repo.GetName()
-	repoOwner := prEvent.Repo.Organization.GetName()
 	prEventURL := prEvent.PullRequest.GetURL()
-
-	if repoName != p.Configuration.UpstreamRepo {
-		log.Warningf("Ignoring PR Event: %s because %s != %s\n", prEventURL, repoName, p.Configuration.UpstreamRepo)
-		return
-	} else if repoOwner != p.Configuration.UpstreamOwner {
-		log.Warningf("Ignoring PR Event: %s because %s != %s\n", prEventURL, repoOwner, p.Configuration.UpstreamOwner)
-		return
-	}
-
 	log.Debugf("Handling PR Event: %s\n", prEventURL)
 
 	prAction := prEvent.GetAction()
@@ -77,6 +66,17 @@ func (p PRMirror) HandlePREvent(prEvent *github.PullRequestEvent) {
 		if err != nil {
 			log.Errorf("Error while creating a new PR: %s\n", err.Error())
 		} else {
+			repoName := prEvent.Repo.GetName()
+			repoOwner := prEvent.Repo.Organization.GetName()
+
+			if repoName != p.Configuration.DownstreamRepo {
+				log.Warningf("Ignoring PR Event: %s because %s != %s\n", prEventURL, repoName, p.Configuration.UpstreamRepo)
+				return
+			} else if repoOwner != p.Configuration.DownstreamOwner {
+				log.Warningf("Ignoring PR Event: %s because %s != %s\n", prEventURL, repoOwner, p.Configuration.UpstreamOwner)
+				return
+			}
+
 			p.AddLabels(prID, []string{"Upstream PR Merged"})
 			p.Database.StoreMirror(prID, prEvent.PullRequest.GetNumber())
 		}
