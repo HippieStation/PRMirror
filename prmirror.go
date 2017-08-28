@@ -25,6 +25,7 @@ type PRMirror struct {
 	Context       *context.Context
 	Configuration *Config
 	Database      *Database
+	GitLock       *SpinLock
 }
 
 // GitHubEventMonitor passes in an instance of the PRMirror struct to all HTTP calls to the webhook listener
@@ -123,6 +124,9 @@ func (p PRMirror) RunWebhookListener() {
 
 // MirrorPR will mirror a PR from an upstream to the downstream
 func (p PRMirror) MirrorPR(pr *github.PullRequest) (int, error) {
+	p.GitLock.Lock()
+	defer p.GitLock.Unlock()
+
 	log.Infof("Mirroring PR [%d]: %s from %s\n", pr.GetNumber(), pr.GetTitle(), pr.User.GetLogin())
 
 	cmd := exec.Command(fmt.Sprintf("%s%s", p.Configuration.RepoPath, p.Configuration.ToolPath), strconv.Itoa(pr.GetNumber()), pr.GetTitle())
@@ -132,7 +136,7 @@ func (p PRMirror) MirrorPR(pr *github.PullRequest) (int, error) {
 		panic(err)
 	}
 
-	log.Debug(cmdoutput)
+	log.Debug(string(cmdoutput))
 
 	base := "master"
 	head := fmt.Sprintf("upstream-merge-%d", pr.GetNumber())

@@ -52,6 +52,7 @@ func main() {
 		Context:       &ctx,
 		Configuration: &Configuration,
 		Database:      Database,
+		GitLock:       &SpinLock{},
 	}
 
 	if CreateLabels {
