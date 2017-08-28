@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os/exec"
 	"strconv"
@@ -137,6 +138,7 @@ func (p PRMirror) MirrorPR(pr *github.PullRequest) (int, error) {
 	}
 
 	log.Debug(string(cmdoutput))
+	ioutil.WriteFile(fmt.Sprintf("./logs/upstream-merge-%d.log", pr.GetNumber()), cmdoutput, 0600)
 
 	base := "master"
 	head := fmt.Sprintf("upstream-merge-%d", pr.GetNumber())
