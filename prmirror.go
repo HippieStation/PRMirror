@@ -55,7 +55,19 @@ func (p PRMirror) HandleEvent(event *github.Event) {
 }
 
 func (p PRMirror) HandlePREvent(prEvent *github.PullRequestEvent) {
-	log.Debugf("Handling PR Event: %s\n", prEvent.PullRequest.GetURL())
+	repoName := prEvent.Repo.GetName()
+	repoOwner := prEvent.Repo.Owner.GetName()
+	prEventURL := prEvent.PullRequest.GetURL()
+
+	if repoName != p.Configuration.DownstreamRepo {
+		log.Warningf("Ignoring PR Event: %s because %s != %s\n", prEventURL, repoName, p.Configuration.DownstreamRepo)
+		return
+	} else if repoOwner != p.Configuration.DownstreamOwner {
+		log.Warningf("Ignoring PR Event: %s because %s != %s\n", prEventURL, repoOwner, p.Configuration.DownstreamOwner)
+		return
+	}
+
+	log.Debugf("Handling PR Event: %s\n", prEventURL)
 
 	prAction := prEvent.GetAction()
 	if prAction == "closed" && prEvent.PullRequest.GetMerged() == true {
