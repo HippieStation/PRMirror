@@ -8,7 +8,7 @@ Mirror's pull requests from one repository to another
 - Make sure that `merge-upstream-pull-request.sh` is marked as executable (`chmod +x merge-upstream-pull-request.sh`)
 - Clone the repo to disk
 - Make sure that you can push new commits back to the repository from the cloned directory, IE: Setup SSH keys or Github Username/Password
-- Delete `config.json` and run the program to generate a blank config
+- Run the program to generate a blank config
   - GitHubToken should be a [GitHub Access Token](https://help.github.com/articles/creating-a-personal-access-token-for-the-command-line/)
   - Upstream is at [tgstation/tgstation](https://github.com/tgstation/tgstation/) and Downstream is at [HippieStation/HippieStation](https://github.com/HippieStation/HippieStation/)
     - UpstreamOwner for us is tgstation
