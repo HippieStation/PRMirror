@@ -128,6 +128,12 @@ func (p PRMirror) MirrorPR(pr *github.PullRequest) (int, error) {
 	p.GitLock.Lock()
 	defer p.GitLock.Unlock()
 
+	downstreamID, err := p.Database.GetDownstreamID(pr.GetNumber())
+	if downstreamID != 0 {
+		log.Warningf("Refusing to mirror already existing PR: %s - %s\n", pr.GetTitle(), pr.GetNumber())
+		return 0, err
+	}
+
 	log.Infof("Mirroring PR [%d]: %s from %s\n", pr.GetNumber(), pr.GetTitle(), pr.User.GetLogin())
 
 	cmd := exec.Command(fmt.Sprintf("%s%s", p.Configuration.RepoPath, p.Configuration.ToolPath), strconv.Itoa(pr.GetNumber()), pr.GetTitle())
