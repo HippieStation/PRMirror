@@ -141,7 +141,7 @@ func (p PRMirror) MirrorPR(pr *github.PullRequest) (int, error) {
 	cmd.Dir = p.Configuration.RepoPath
 	cmdoutput, err := cmd.CombinedOutput()
 	if err != nil {
-		panic(err)
+		log.Criticalf("Error while mirroring %d: %s\n", pr.GetNumber(), err)
 	}
 
 	logpath := fmt.Sprintf("./logs/upstream-merge-%d.log", pr.GetNumber())
