@@ -73,7 +73,7 @@ func (p PRMirror) HandlePREvent(prEvent *github.PullRequestEvent) {
 	log.Debugf("Handling PR Event: %s\n", prEventURL)
 
 	prAction := prEvent.GetAction()
-	if prAction == "closed" && prEvent.PullRequest.GetMerged() == true {
+	if prAction == "closed" && prEvent.PullRequest.GetMerged() == true && prEvent.PullRequest.Base.GetRef() == "master" {
 		prID, err := p.MirrorPR(prEvent.PullRequest)
 		if err != nil {
 			log.Errorf("Error while creating a new PR: %s\n", err.Error())
