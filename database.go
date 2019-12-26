@@ -11,10 +11,12 @@ import (
 	"github.com/boltdb/bolt"
 )
 
+// Database type
 type Database struct {
 	db *bolt.DB
 }
 
+// NewDatabase creates a new DB
 func NewDatabase() *Database {
 	db, err := bolt.Open("mirror.db", 0600, nil)
 	if err != nil {
@@ -48,6 +50,7 @@ func NewDatabase() *Database {
 	return &Database{db}
 }
 
+// DumpDB dumps DB to stdout
 func (d *Database) DumpDB() {
 	log.Debugf("down2up")
 	d.db.View(func(tx *bolt.Tx) error {
@@ -74,10 +77,12 @@ func (d *Database) DumpDB() {
 	})
 }
 
+// Path get DB path
 func (d *Database) Path() string {
 	return d.db.Path()
 }
 
+// Close close DB
 func (d *Database) Close() {
 	d.db.Close()
 }
@@ -92,6 +97,7 @@ func (d *Database) btoi(v []byte) int {
 	return int(binary.BigEndian.Uint64(v))
 }
 
+// AddEvent add event to DB
 func (d *Database) AddEvent(eventIDStr string) error {
 	eventID, err := strconv.ParseInt(eventIDStr, 10, 64)
 	if err != nil {
@@ -110,6 +116,7 @@ func (d *Database) AddEvent(eventIDStr string) error {
 	return nil
 }
 
+// StoreMirror store mirror to DB
 func (d *Database) StoreMirror(downstreamID int, upstreamID int) error {
 	downstreamIDBytes := d.itob(downstreamID)
 	upstreamIDBytes := d.itob(upstreamID)
@@ -131,6 +138,7 @@ func (d *Database) StoreMirror(downstreamID int, upstreamID int) error {
 	return nil
 }
 
+// GetID get ID of item from DB
 func (d *Database) GetID(bucket string, id int) (int, error) {
 	// Start read-only transaction.
 	tx, err := d.db.Begin(false)
@@ -139,16 +147,17 @@ func (d *Database) GetID(bucket string, id int) (int, error) {
 	}
 	defer tx.Rollback()
 
-	if v := tx.Bucket([]byte(bucket)).Get(d.itob(id)); v == nil {
+	v := tx.Bucket([]byte(bucket)).Get(d.itob(id))
+	if v == nil {
 		//log.Debugf("Getting %d from %s = nil\n", id, bucket)
 		return 0, nil
-	} else {
-		val := d.btoi(v)
-		//log.Debugf("Getting %d from %s = %d\n", id, bucket, val)
-		return val, nil
 	}
+	val := d.btoi(v)
+	//log.Debugf("Getting %d from %s = %d\n", id, bucket, val)
+	return val, nil
 }
 
+// SeenEvent have we seen this event before
 func (d *Database) SeenEvent(eventIDStr string) (bool, error) {
 	eventID, err := strconv.ParseInt(eventIDStr, 10, 64)
 	if err != nil {
@@ -163,10 +172,12 @@ func (d *Database) SeenEvent(eventIDStr string) (bool, error) {
 	return false, err
 }
 
+// GetDownstreamID get id of downstream PR
 func (d *Database) GetDownstreamID(upstreamID int) (int, error) {
 	return d.GetID("up2down", upstreamID)
 }
 
+// GetUpstreamID get id of upstream PR
 func (d *Database) GetUpstreamID(downstreamID int) (int, error) {
 	return d.GetID("down2up", downstreamID)
 }

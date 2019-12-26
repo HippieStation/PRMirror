@@ -48,7 +48,7 @@ func (p PRMirror) GetRepoEvents() ([]*github.Event, int64, error) {
 	return allEvents, pollInterval, nil
 }
 
-// GetRepoEvents returns a list a list of RepoEvents, but for downstream
+// GetDownstreamRepoEvents returns a list a list of RepoEvents, but for downstream
 func (p PRMirror) GetDownstreamRepoEvents() ([]*github.Event, int64, error) {
 	var allEvents []*github.Event
 	var pollInterval = int64(0)

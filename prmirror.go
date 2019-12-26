@@ -67,6 +67,7 @@ func (p PRMirror) HandleEvent(event *github.Event) {
 	}
 }
 
+// HandlePREvent handles PR events
 func (p PRMirror) HandlePREvent(prEvent *github.PullRequestEvent) {
 	//repoName := prEvent.Repo.GetName()
 	//repoOwner := prEvent.Repo.Owner.GetName()
@@ -93,6 +94,7 @@ func (p PRMirror) HandlePREvent(prEvent *github.PullRequestEvent) {
 	}
 }
 
+// HandlePRComment handles comment events
 func (p PRMirror) HandlePRComment(prComment *github.IssueCommentEvent) {
 	prCommentURL := prComment.GetIssue().GetURL()
 
@@ -219,6 +221,34 @@ func (p PRMirror) MirrorPR(pr *github.PullRequest) (int, error) {
 	if strings.Contains(string(cmdoutput), "Rejected hunk") {
 		p.AddLabels(pr.GetNumber(), []string{"Auto Merge Rejections"})
 	}
+
+	return pr.GetNumber(), nil
+}
+
+// RemirrorPR will update the downstream mirror branch
+func (p PRMirror) RemirrorPR(pr *github.PullRequest) (int, error) {
+	p.GitLock.Lock()
+	defer p.GitLock.Unlock()
+
+	//downstreamID, err := p.Database.GetDownstreamID(pr.GetNumber())
+	/*if downstreamID != 0 {
+		log.Warningf("Refusing to mirror already existing PR: %s - %s\n", pr.GetTitle(), pr.GetNumber())
+		return 0, errors.New("prmirror: tried to mirror a PR which has already been mirrored")
+	}*/
+
+	log.Infof("Remirroring PR [%d]: %s from %s\n", pr.GetNumber(), pr.GetTitle(), pr.User.GetLogin())
+
+	cmd := exec.Command(fmt.Sprintf("%s%s", p.Configuration.RepoPath, p.Configuration.ToolPath), strconv.Itoa(pr.GetNumber()), pr.GetTitle())
+	cmd.Dir = p.Configuration.RepoPath
+	cmdoutput, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Criticalf("Error while remirroring %d: %s\n", pr.GetNumber(), err)
+		return 0, err
+	}
+
+	logpath := fmt.Sprintf("./logs/upstream-merge-remirror-%d.log", pr.GetNumber())
+	ioutil.WriteFile(logpath, cmdoutput, 0600)
+	log.Debugf("Wrote log to %s\n", logpath)
 
 	return pr.GetNumber(), nil
 }

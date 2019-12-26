@@ -13,8 +13,13 @@ import (
 	"golang.org/x/oauth2"
 )
 
+// PRMirrorer represents the PRMirror engine
 var PRMirrorer = PRMirror{}
+
+// CreateLabels do we create labels for PRs (read from config)
 var CreateLabels = false
+
+// DumpDB do we dump the contents of the DB to stdout (read from config)
 var DumpDB = false
 
 func init() {
