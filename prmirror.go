@@ -42,7 +42,7 @@ func (p PRMirror) HandleEvent(event *github.Event) {
 	}
 
 	eventType := event.GetType()
-	if eventType == "PullRequestEvent" && event.GetRepo().GetName() == p.Configuration.UpstreamRepo {
+	if eventType == "PullRequestEvent" && event.GetRepo().GetOwner().GetName() == p.Configuration.UpstreamOwner {
 		prEvent := github.PullRequestEvent{}
 		err := json.Unmarshal(event.GetRawPayload(), &prEvent)
 		if err != nil {
@@ -51,7 +51,7 @@ func (p PRMirror) HandleEvent(event *github.Event) {
 
 		p.HandlePREvent(&prEvent)
 		p.Database.AddEvent(event.GetID())
-	} else if eventType != "IssueCommentEvent" && event.GetRepo().GetName() == p.Configuration.DownstreamRepo {
+	} else if eventType != "IssueCommentEvent" && event.GetRepo().GetOwner().GetName() == p.Configuration.DownstreamOwner {
 		prComment := github.IssueCommentEvent{}
 		err := json.Unmarshal(event.GetRawPayload(), &prComment)
 		if err != nil {
