@@ -58,10 +58,6 @@ func (p PRMirror) HandleEvent(event *github.Event) {
 			panic(err)
 		}
 
-		if !prComment.GetIssue().IsPullRequest() {
-			return
-		}
-
 		p.HandlePRComment(&prComment)
 		p.Database.AddEvent(event.GetID())
 	}
@@ -94,6 +90,10 @@ func (p PRMirror) HandlePREvent(prEvent *github.PullRequestEvent) {
 }
 
 func (p PRMirror) HandlePRComment(prComment *github.IssueCommentEvent) {
+	if !prComment.GetIssue().IsPullRequest() {
+		return
+	}
+
 	prCommentURL := prComment.GetIssue().GetURL()
 
 	log.Debugf("Handling PR Comment: %s\n", prCommentURL)
