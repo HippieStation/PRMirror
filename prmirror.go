@@ -118,7 +118,7 @@ func (p PRMirror) HandlePRComment(prComment *github.IssueCommentEvent) {
 			return
 		}
 
-		prID, err := p.MirrorPR(pr)
+		_, err = p.MirrorPR(pr)
 		if err != nil {
 			log.Errorf("Error while remirroring PR: %s\n", err.Error())
 		}
