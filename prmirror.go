@@ -102,7 +102,7 @@ func (p PRMirror) HandlePRComment(prComment *github.IssueCommentEvent) {
 
 	comment := prComment.GetComment()
 	rank := comment.GetAuthorAssociation()
-	if rank == "COLLABORATOR" || rank == "MEMBER" || rank == "OWNER" && strings.HasPrefix(comment.GetBody(), "remirror") {
+	if (rank == "COLLABORATOR" || rank == "MEMBER" || rank == "OWNER") && strings.HasPrefix(comment.GetBody(), "remirror") {
 		id := prComment.GetIssue().GetNumber()
 		pr, _, err := p.GitHubClient.PullRequests.Get(*p.Context, p.Configuration.DownstreamOwner, p.Configuration.DownstreamRepo, id)
 		if err != nil {
@@ -120,7 +120,7 @@ func (p PRMirror) HandlePRComment(prComment *github.IssueCommentEvent) {
 			return
 		}
 
-		_, err = p.MirrorPR(pr)
+		_, err = p.RemirrorPR(pr)
 		if err != nil {
 			log.Errorf("Error while remirroring PR: %s\n", err.Error())
 		}
