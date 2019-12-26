@@ -43,7 +43,7 @@ func (p PRMirror) HandleEvent(event *github.Event) {
 	}
 
 	eventType := event.GetType()
-	if eventType == "PullRequestEvent" && event.GetRepo() == Configuration.UpstreamRepo {
+	if eventType == "PullRequestEvent" && event.GetRepo() == p.Configuration.UpstreamRepo {
 		prEvent := github.PullRequestEvent{}
 		err := json.Unmarshal(event.GetRawPayload(), &prEvent)
 		if err != nil {
@@ -52,8 +52,8 @@ func (p PRMirror) HandleEvent(event *github.Event) {
 	
 		p.HandlePREvent(&prEvent)
 		p.Database.AddEvent(event.GetID())
-	} else if eventType != "IssueCommentEvent" && event.GetRepo() == Configuration.DownstreamRepo {
-		prComment := github.PullRequestComment{}
+	} else if eventType != "IssueCommentEvent" && event.GetRepo() == p.Configuration.DownstreamRepo {
+		prComment := github.IssueCommentEvent{}
 		err := json.Unmarshal(event.GetRawPayload(), &prComment)
 		if err != nil {
 			panic(err)
@@ -95,6 +95,8 @@ func (p PRMirror) HandlePREvent(prEvent *github.PullRequestEvent) {
 }
 
 func (p PRMirror) HandlePRComment(prComment *github.IssueCommentEvent) {
+	prCommentURL := prComment.GetIssue().GetURL()
+	
 	log.Debugf("Handling PR Comment: %s\n", prCommentURL)
 
 	rank := prComment.GetComment().GetAuthorAssociation()
@@ -106,8 +108,8 @@ func (p PRMirror) HandlePRComment(prComment *github.IssueCommentEvent) {
 			return
 		}
 		body := pr.GetBody()
-		temp := strings.split(body, "/")
-		temp2 := strings.split(temp[6], "\n")
+		temp := strings.Split(body, "/")
+		temp2 := strings.Split(temp[6], "\n")
 		id, err := strconv.Atoi(temp2[0])
 
 		pr, _, err = p.GitHubClient.PullRequests.Get(*p.Context, p.Configuration.UpstreamOwner, p.Configuration.UpstreamRepo, &id)
