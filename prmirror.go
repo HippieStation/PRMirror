@@ -52,8 +52,7 @@ func (p PRMirror) HandleEvent(event *github.Event) {
 	
 		p.HandlePREvent(&prEvent)
 		p.Database.AddEvent(event.GetID())
-	}
-	else if eventType != "IssueCommentEvent" && event.GetRepo() == Configuration.DownstreamRepo {
+	} else if eventType != "IssueCommentEvent" && event.GetRepo() == Configuration.DownstreamRepo {
 		prComment := github.PullRequestComment{}
 		err := json.Unmarshal(event.GetRawPayload(), &prComment)
 		if err != nil {
@@ -66,8 +65,6 @@ func (p PRMirror) HandleEvent(event *github.Event) {
 
 		p.HandlePRComment(&prComment)
 		p.Database.AddEvent(event.GetID())
-	} else {
-		return
 	}
 }
 
@@ -98,34 +95,31 @@ func (p PRMirror) HandlePREvent(prEvent *github.PullRequestEvent) {
 }
 
 func (p PRMirror) HandlePRComment(prComment *github.IssueCommentEvent) {
-	id := prComment.GetIssue().GetNumber()
-	pr, _, err := p.GitHubClient.PullRequests.Get(*p.Context, p.Configuration.DownstreamOwner, p.Configuration.DownstreamRepo, &id)
-	if err != nil {
-		log.Errorf("Error while getting downstream PR for remirror: %s\n", err.Error())
-		return
-	}
-	body := pr.GetBody()
-	temp := strings.split(body, "/")
-	temp2 := strings.split(temp[6], "\n")
-	id, err := strconv.Atoi(temp2[0])
-
-	pr, _, err = p.GitHubClient.PullRequests.Get(*p.Context, p.Configuration.UpstreamOwner, p.Configuration.UpstreamRepo, &id)
-	if err != nil {
-		log.Errorf("Error while getting upstream PR to remirror: %s\n", err.Error())
-		return
-	}
-
-	prID, err := p.MirrorPR(pr)
-	if err != nil {
-		log.Errorf("Error while remirroring PR: %s\n", err.Error())
- 	}
-
 	log.Debugf("Handling PR Comment: %s\n", prCommentURL)
 
 	rank := prComment.GetComment().GetAuthorAssociation()
 	if rank == "COLLABORATOR" || rank == "MEMBER" || rank == "OWNER" && strings.HasPrefix(prComment.GetBody(), "remirror") {
-		upstreamID = 
-		p.GitHubClient.
+		id := prComment.GetIssue().GetNumber()
+		pr, _, err := p.GitHubClient.PullRequests.Get(*p.Context, p.Configuration.DownstreamOwner, p.Configuration.DownstreamRepo, &id)
+		if err != nil {
+			log.Errorf("Error while getting downstream PR for remirror: %s\n", err.Error())
+			return
+		}
+		body := pr.GetBody()
+		temp := strings.split(body, "/")
+		temp2 := strings.split(temp[6], "\n")
+		id, err := strconv.Atoi(temp2[0])
+
+		pr, _, err = p.GitHubClient.PullRequests.Get(*p.Context, p.Configuration.UpstreamOwner, p.Configuration.UpstreamRepo, &id)
+		if err != nil {
+			log.Errorf("Error while getting upstream PR to remirror: %s\n", err.Error())
+			return
+		}
+
+		prID, err := p.MirrorPR(pr)
+		if err != nil {
+			log.Errorf("Error while remirroring PR: %s\n", err.Error())
+ 		}
 	}
 }
 
