@@ -48,6 +48,38 @@ func (p PRMirror) GetRepoEvents() ([]*github.Event, int64, error) {
 	return allEvents, pollInterval, nil
 }
 
+// GetRepoEvents returns a list a list of RepoEvents, but for downstream
+func (p PRMirror) GetDownstreamRepoEvents() ([]*github.Event, int64, error) {
+	var allEvents []*github.Event
+	var pollInterval = int64(0)
+
+	opt := &github.ListOptions{
+		PerPage: 100,
+	}
+
+	for {
+		log.Debugf("Getting Downstream RepoEvents Page %d\n", opt.Page)
+
+		events, resp, err := p.GitHubClient.Activity.ListRepositoryEvents(*p.Context, p.Configuration.DownstreamOwner, p.Configuration.DownstreamRepo, opt)
+		if err != nil {
+			log.Errorf("Error while listing repository events. %s", err.Error())
+			return nil, 60, err
+		}
+
+		allEvents = append(allEvents, events...)
+		if resp.NextPage == 0 {
+			pollInterval, err = strconv.ParseInt(resp.Response.Header.Get("X-Poll-Interval"), 10, 64)
+			if err != nil {
+				panic(err)
+			}
+			break
+		}
+		opt.Page = resp.NextPage
+	}
+
+	return allEvents, pollInterval, nil
+}
+
 // CreateLabel creates a new label
 func (p PRMirror) CreateLabel(labelText string, labelColour string) bool {
 	label := github.Label{

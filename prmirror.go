@@ -43,18 +43,32 @@ func (p PRMirror) HandleEvent(event *github.Event) {
 	}
 
 	eventType := event.GetType()
-	if eventType != "PullRequestEvent" {
+	if eventType == "PullRequestEvent" && event.GetRepo() == Configuration.UpstreamRepo {
+		prEvent := github.PullRequestEvent{}
+		err := json.Unmarshal(event.GetRawPayload(), &prEvent)
+		if err != nil {
+			panic(err)
+		}
+	
+		p.HandlePREvent(&prEvent)
+		p.Database.AddEvent(event.GetID())
+	}
+	else if eventType != "IssueCommentEvent" && event.GetRepo == Configuration.DownstreamRepo {
+		prComment := github.PullRequestComment{}
+		err := json.Unmarshal(event.GetRawPayload(), &prComment)
+		if err != nil {
+			panic(err)
+		}
+
+		if !prComment.GetIssue().IsPullRequest() {
+			return
+		}
+
+		p.HandlePRComment(&prComment)
+		p.Database.AddEvent(event.GetID())
+	} else {
 		return
 	}
-
-	prEvent := github.PullRequestEvent{}
-	err := json.Unmarshal(event.GetRawPayload(), &prEvent)
-	if err != nil {
-		panic(err)
-	}
-
-	p.HandlePREvent(&prEvent)
-	p.Database.AddEvent(event.GetID())
 }
 
 func (p PRMirror) HandlePREvent(prEvent *github.PullRequestEvent) {
@@ -78,9 +92,40 @@ func (p PRMirror) HandlePREvent(prEvent *github.PullRequestEvent) {
 		if err != nil {
 			log.Errorf("Error while creating a new PR: %s\n", err.Error())
 		} else {
-			p.AddLabels(prID, []string{"Upstream PR Merged"})
 			p.Database.StoreMirror(prID, prEvent.PullRequest.GetNumber())
 		}
+	}
+}
+
+func (p PRMirror) HandlePRComment(prComment *github.IssueCommentEvent) {
+	id := prComment.GetIssue().GetNumber()
+	pr, _, err := p.GitHubClient.PullRequests.Get(*p.Context, p.Configuration.DownstreamOwner, p.Configuration.DownstreamRepo, &id)
+	if err != nil {
+		log.Errorf("Error while getting downstream PR for remirror: %s\n", err.Error())
+		return
+	}
+	body := pr.GetBody()
+	temp := strings.split(body, "/")
+	temp2 := strings.split(temp[6], "\n")
+	id, err := strconv.Atoi(temp2[0])
+
+	pr, _, err = p.GitHubClient.PullRequests.Get(*p.Context, p.Configuration.UpstreamOwner, p.Configuration.UpstreamRepo, &id)
+	if err != nil {
+		log.Errorf("Error while getting upstream PR to remirror: %s\n", err.Error())
+		return
+	}
+
+	prID, err := p.MirrorPR(pr)
+	if err != nil {
+		log.Errorf("Error while remirroring PR: %s\n", err.Error())
+ 	}
+
+	log.Debugf("Handling PR Comment: %s\n", prCommentURL)
+
+	rank := prComment.GetComment().GetAuthorAssociation()
+	if rank == "COLLABORATOR" || rank == "MEMBER" || rank == "OWNER" && strings.HasPrefix(prComment.GetBody(), "remirror") {
+		upstreamID = 
+		p.GitHubClient.
 	}
 }
 
@@ -88,6 +133,14 @@ func (p PRMirror) HandlePREvent(prEvent *github.PullRequestEvent) {
 func (p PRMirror) RunEventScraper() {
 	for {
 		events, pollInterval, err := p.GetRepoEvents()
+		if err == nil {
+			for _, event := range events {
+				p.HandleEvent(event)
+			}
+		}
+
+		// Handle downstream events
+		events, pollInterval, err := p.GetDownstreamRepoEvents()
 		if err == nil {
 			for _, event := range events {
 				p.HandleEvent(event)
@@ -130,10 +183,10 @@ func (p PRMirror) MirrorPR(pr *github.PullRequest) (int, error) {
 	defer p.GitLock.Unlock()
 
 	downstreamID, err := p.Database.GetDownstreamID(pr.GetNumber())
-	if downstreamID != 0 {
+	/*if downstreamID != 0 {
 		log.Warningf("Refusing to mirror already existing PR: %s - %s\n", pr.GetTitle(), pr.GetNumber())
 		return 0, errors.New("prmirror: tried to mirror a PR which has already been mirrored")
-	}
+	}*/
 
 	log.Infof("Mirroring PR [%d]: %s from %s\n", pr.GetNumber(), pr.GetTitle(), pr.User.GetLogin())
 
