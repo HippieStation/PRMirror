@@ -43,7 +43,7 @@ func (p PRMirror) HandleEvent(event *github.Event) {
 	}
 
 	eventType := event.GetType()
-	if eventType == "PullRequestEvent" && event.GetRepo() == p.Configuration.UpstreamRepo {
+	if eventType == "PullRequestEvent" && event.GetRepo().GetName() == p.Configuration.UpstreamRepo {
 		prEvent := github.PullRequestEvent{}
 		err := json.Unmarshal(event.GetRawPayload(), &prEvent)
 		if err != nil {
@@ -52,7 +52,7 @@ func (p PRMirror) HandleEvent(event *github.Event) {
 	
 		p.HandlePREvent(&prEvent)
 		p.Database.AddEvent(event.GetID())
-	} else if eventType != "IssueCommentEvent" && event.GetRepo() == p.Configuration.DownstreamRepo {
+	} else if eventType != "IssueCommentEvent" && event.GetRepo().GetName() == p.Configuration.DownstreamRepo {
 		prComment := github.IssueCommentEvent{}
 		err := json.Unmarshal(event.GetRawPayload(), &prComment)
 		if err != nil {
@@ -99,10 +99,11 @@ func (p PRMirror) HandlePRComment(prComment *github.IssueCommentEvent) {
 	
 	log.Debugf("Handling PR Comment: %s\n", prCommentURL)
 
-	rank := prComment.GetComment().GetAuthorAssociation()
-	if rank == "COLLABORATOR" || rank == "MEMBER" || rank == "OWNER" && strings.HasPrefix(prComment.GetBody(), "remirror") {
-		id := prComment.GetIssue().GetNumber()
-		pr, _, err := p.GitHubClient.PullRequests.Get(*p.Context, p.Configuration.DownstreamOwner, p.Configuration.DownstreamRepo, &id)
+	comment := prComment.GetComment()
+	rank := comment.GetAuthorAssociation()
+	if rank == "COLLABORATOR" || rank == "MEMBER" || rank == "OWNER" && strings.HasPrefix(comment.GetBody(), "remirror") {
+		id := comment.GetIssue().GetNumber()
+		pr, _, err := p.GitHubClient.PullRequests.Get(*p.Context, p.Configuration.DownstreamOwner, p.Configuration.DownstreamRepo, *id)
 		if err != nil {
 			log.Errorf("Error while getting downstream PR for remirror: %s\n", err.Error())
 			return
@@ -112,7 +113,7 @@ func (p PRMirror) HandlePRComment(prComment *github.IssueCommentEvent) {
 		temp2 := strings.Split(temp[6], "\n")
 		id, err := strconv.Atoi(temp2[0])
 
-		pr, _, err = p.GitHubClient.PullRequests.Get(*p.Context, p.Configuration.UpstreamOwner, p.Configuration.UpstreamRepo, &id)
+		pr, _, err = p.GitHubClient.PullRequests.Get(*p.Context, p.Configuration.UpstreamOwner, p.Configuration.UpstreamRepo, *id)
 		if err != nil {
 			log.Errorf("Error while getting upstream PR to remirror: %s\n", err.Error())
 			return
