@@ -53,7 +53,7 @@ func (p PRMirror) HandleEvent(event *github.Event) {
 		p.HandlePREvent(&prEvent)
 		p.Database.AddEvent(event.GetID())
 	}
-	else if eventType != "IssueCommentEvent" && event.GetRepo == Configuration.DownstreamRepo {
+	else if eventType != "IssueCommentEvent" && event.GetRepo() == Configuration.DownstreamRepo {
 		prComment := github.PullRequestComment{}
 		err := json.Unmarshal(event.GetRawPayload(), &prComment)
 		if err != nil {
