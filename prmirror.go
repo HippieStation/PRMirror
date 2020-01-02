@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -180,11 +181,11 @@ func (p PRMirror) MirrorPR(pr *github.PullRequest) (int, error) {
 	p.GitLock.Lock()
 	defer p.GitLock.Unlock()
 
-	//downstreamID, err := p.Database.GetDownstreamID(pr.GetNumber())
-	/*if downstreamID != 0 {
+	downstreamID, err := p.Database.GetDownstreamID(pr.GetNumber())
+	if downstreamID != 0 {
 		log.Warningf("Refusing to mirror already existing PR: %s - %s\n", pr.GetTitle(), pr.GetNumber())
 		return 0, errors.New("prmirror: tried to mirror a PR which has already been mirrored")
-	}*/
+	}
 
 	log.Infof("Mirroring PR [%d]: %s from %s\n", pr.GetNumber(), pr.GetTitle(), pr.User.GetLogin())
 
