@@ -51,7 +51,7 @@ func (p PRMirror) HandleEvent(event *github.Event) {
 		}
 
 		p.HandlePREvent(&prEvent)
-		p.Database.AddEvent(event.GetID())
+		p.Database.AddEvent("pr" + event.GetID())
 	} else if eventType == "IssueCommentEvent" && event.GetRepo().GetName() == p.Configuration.DownstreamOwner+"/"+p.Configuration.DownstreamRepo {
 		prComment := github.IssueCommentEvent{}
 		err := json.Unmarshal(event.GetRawPayload(), &prComment)
@@ -64,7 +64,7 @@ func (p PRMirror) HandleEvent(event *github.Event) {
 		}
 
 		p.HandlePRComment(&prComment)
-		p.Database.AddEvent(event.GetID())
+		p.Database.AddEvent("remirror" + event.GetID())
 	}
 }
 
@@ -90,6 +90,9 @@ func (p PRMirror) HandlePREvent(prEvent *github.PullRequestEvent) {
 		if err != nil {
 			log.Errorf("Error while creating a new PR: %s\n", err.Error())
 		} else {
+			if p.Configuration.AddLabel {
+				p.AddLabels(prID, []string{"Upstream PR Merged"})
+			}
 			p.Database.StoreMirror(prID, prEvent.PullRequest.GetNumber())
 		}
 	}
@@ -114,6 +117,10 @@ func (p PRMirror) HandlePRComment(prComment *github.IssueCommentEvent) {
 		temp := strings.Split(body, "/")
 		temp2 := strings.Split(temp[6], "\n")
 		id, err = strconv.Atoi(temp2[0])
+		if err != nil {
+			log.Errorf("Error while parsing downstream PR body, incorrect format: %s\n", err.Error())
+			return
+		}
 
 		pr, _, err = p.GitHubClient.PullRequests.Get(*p.Context, p.Configuration.UpstreamOwner, p.Configuration.UpstreamRepo, id)
 		if err != nil {
