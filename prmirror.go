@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -213,6 +214,8 @@ func (p PRMirror) MirrorPR(pr *github.PullRequest) (int, error) {
 	maintainerCanModify := true // We are the owner of the PR so we can specify this as true
 	title := fmt.Sprintf("[MIRROR] %s", pr.GetTitle())
 	body := fmt.Sprintf("Original PR: %s\n--------------------\n%s", pr.GetHTMLURL(), strings.Replace(pr.GetBody(), "@", "@ ", -1))
+	re := regexp.MustCompile(`(?i)\b((fix(|es|ed))|(close(|s|d))|(resolve(|s|d)))\s#\d+\b`)
+	body = re.ReplaceAllString(body, "[issue link stripped]")
 
 	newPR := github.NewPullRequest{}
 	newPR.Title = &title
