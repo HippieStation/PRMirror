@@ -1,5 +1,7 @@
 # PRMirror
 Mirror's pull requests from one repository to another
+Note: This code updated to support remirroring broken PRs and fix some issues.
+I recommend using it over the original HippieStation repository.
 
 ## Getting started
 - This is best off done on a fresh repository as it's likely that you have lots of modified upstream code. We did this for our latest branch https://github.com/HippieStation/HippieStation - We try to maintain modular code by using an additional folder for all of our code: https://github.com/HippieStation/HippieStation/tree/master/hippiestation
